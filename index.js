@@ -3,8 +3,9 @@ const fs = require('fs');
 const express = require('express');
 const { exec } = require('child_process');
 const { SSL_OP_TLS_BLOCK_PADDING_BUG } = require('constants');
-const app = express();
 require('dotenv').config();
+const app = express();
+const rootDir = "/home/pi/alarm";
 var alarmRunning = false;
 var systemActive = true;
 var debugMode = false;
@@ -60,7 +61,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-    // the other events I had here were redacted for Github :)
+    // there were more events here, but I have redacted them :)
 ];
 
 // -- Script start --
@@ -376,7 +377,7 @@ app.get('/cancel', function (req, res) {
 // -- Test Sound Page --
 app.get('/test', function (req, res) {
     log('Sound Test Initialized');
-    exec('sudo omxplayer /home/pi/alarm/alarm_sfx.mp3 --vol 100', (err, stdout, stderr) => {
+    exec(`sudo omxplayer ${rootDir}/alarm_sfx.mp3 --vol 100`, (err, stdout, stderr) => {
         if (err) {
             //console.error(err)
         } else {
@@ -445,7 +446,7 @@ function run() {
         }
     }
     if (new Date().getSeconds() % (soundLength+1) == 0 && alarmRunning) {
-        exec('sudo omxplayer /home/pi/alarm/alarm_sfx.mp3 --vol 100', (err, stdout, stderr) => {
+        exec(`sudo omxplayer ${rootDir}/alarm_sfx.mp3 --vol 100`, (err, stdout, stderr) => {
             if (err) {
                 //console.error(err)
             } else {
@@ -514,7 +515,7 @@ function runTTS() {
         } else {
             console.log(`stdout: ${stdout}`);
             console.log(`stderr: ${stderr}`);
-            exec('sudo omxplayer /home/pi/alarm/tts_out.wav --vol 100', (err, stdout, stderr) => {
+            exec(`sudo omxplayer ${rootDir}/tts_out.wav --vol 100`, (err, stdout, stderr) => {
                 if (err) {
                     //console.error(err)
                 }
