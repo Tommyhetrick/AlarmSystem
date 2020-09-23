@@ -12,3 +12,4 @@ Important:
 You need to create a service on IBM Watson Cloud for Text to Speech and enter the details in the .env file in the root.
 alarn_sfx.mp3 must exist in the root directory.
 As I have it setup, this uses omxplayer to play audio files because I am using a older Raspberry Pi
+Make sure the constant variable rootDir reflects the directory of the script
