@@ -38,8 +38,8 @@ var alarmData = [
     },
     // thursday
     {
-        hours: 11,
-        minutes: 0
+        hours: 8,
+        minutes: 50
     },
     // friday
     {
@@ -61,7 +61,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-    // there were more events here, but I have redacted them :)
+   // rest of my events were redacted :)
 ];
 
 // -- Script start --
@@ -108,7 +108,7 @@ app.get('/', function (req, res) {
             }   
             tempToday = addDays(today,1);
         }
-        var nAlarm = alarmData[today.getDay()];
+        var nAlarm = alarmData[tempToday.getDay()];
     }
     var dotwIndex = tempToday.getDay();
 
