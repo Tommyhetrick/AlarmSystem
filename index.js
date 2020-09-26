@@ -12,7 +12,9 @@ var debugMode = false;
 const port = 80;
 const soundLength = 3;
 const timeOffset = 4;
+const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 var cancelled = false;
+var modified = false;
 // ALARM TIMES
 var alarmData = [
 
@@ -53,6 +55,7 @@ var alarmData = [
     }
 ];
 
+const origAlarmData = alarmData;
 // event (memories) data. end with a period
 const eventData = [
     {
@@ -61,7 +64,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-   // rest of my events were redacted :)
+// other events here were redacted
 ];
 
 // -- Script start --
@@ -72,55 +75,11 @@ app.listen(port, () => {
 });
 //app.use('/', express.static('public'));
 app.get('/', function (req, res) {
-
-    // get next alarm  
-    var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    var today  = new Date();
-    var todayAlarm = alarmData[today.getDay()];
-    var todayAlarmUnix = new Date((today.getMonth() + 1) + "/" + today.getDate() + "/" + today.getFullYear()+" " + todayAlarm.hours + ":" + todayAlarm.minutes + ":0").getTime();
-    if (todayAlarmUnix > today.getTime()) {
-        // alarm still has not happened yet today
-        var tempToday;
-        if (cancelled) {
-            var dotw = today.getDay() + 1;
-            if (dotw == 7) {
-                dotw = 0;
-            }   
-            tempToday = addDays(today,1);
-        } else {
-            dotw = today.getDay();
-            tempToday = today;
-        }
-        var nAlarm = alarmData[today.getDay()];
-    } else {
-        // alarm has happened today, get tommorow's alarm
-        var tempToday;
-        if (cancelled) {
-            var dotw = today.getDay() + 2;
-            if (dotw == 8) {
-                dotw = 1;
-            }   
-            tempToday = addDays(today,2);
-        } else {
-            var dotw = today.getDay() + 1;
-            if (dotw == 7) {
-                dotw = 0;
-            }   
-            tempToday = addDays(today,1);
-        }
-        var nAlarm = alarmData[tempToday.getDay()];
-    }
-    var dotwIndex = tempToday.getDay();
-
-    if (cancelled) {
-        dotwIndex--;
-        if (dotwIndex == -1) {
-            dotwIndex = 6;
-        }
-    }
-    var cancelledDOTW = days[dotwIndex];
-    var nAlarmUnix = new Date((tempToday.getMonth() + 1) + "/" + tempToday.getDate() + "/" + tempToday.getFullYear()+" " + nAlarm.hours + ":" + nAlarm.minutes + ":0").getTime();
-
+    na = getNextAlarm();
+    nAlarmUnix = na.nAlarmUnix;
+    cancelledDOTW = na.cancelledDOTW;
+    tempToday = na.tempToday;  
+    //var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     if (systemActive) {
         toggleBtnTxt = "Turn System Off";
         backgroundClr = "white";
@@ -154,6 +113,17 @@ app.get('/', function (req, res) {
         stopBtnMod = "style='background-color: rgb(127,127,127)'";
     }
 
+    var dispTimes = alarmData.slice(0);
+
+    for (var i=0;i<dispTimes.length;i++) {
+        let amPm = "AM";
+        if (dispTimes[i].hours > 12) {
+            dispTimes[i].hours -= 12;
+            amPm = "PM";
+        }
+        dispTimes[i].minutes = formatDNum(dispTimes[i].minutes);
+        dispTimes[i] = dispTimes[i].hours + ":" + dispTimes[i].minutes + " " +amPm;
+    };
     //send back homepage
     res.send(`
     <head>
@@ -166,7 +136,7 @@ app.get('/', function (req, res) {
     <br><br>
     <input type="button" id="force" ${hideableObj}>
     <input type="button" id="cancel" value="Cancel Status" onclick="document.location.href='./cancel'" ${hideableObj}>
-    <br>
+    <input type="button" id="Modify" ${hideableObj} value="Modify Next" onclick="document.location.href='./modify'">
     <input type="button" id="test">
     <br>
     <p id="countdown" ${hideableObj}></p>
@@ -182,6 +152,41 @@ app.get('/', function (req, res) {
     <br>
     <br>
     <input type="button" id="debugMode" value="${toggleDebugTxt}" onclick="document.location.href='./debug'">
+    <br><br><br>
+    <table style="width:16%;margin-left: 42%;">
+        <tr>
+            <th>Day Of The Week:</th>
+            <th>Time</th>
+        </tr>
+        <tr>
+            <td>Sunday</td>
+            <td>${dispTimes[0]}</td>
+        </tr>
+        <tr>
+            <td>Monday</td>
+            <td>${dispTimes[1]}</td>
+        </tr>
+        <tr>
+            <td>Tuesday</td>
+            <td>${dispTimes[2]}</td>
+        </tr>
+        <tr>
+            <td>Wednesday</td>
+            <td>${dispTimes[3]}</td>
+        </tr>
+        <tr>
+            <td>Thursday</td>
+            <td>${dispTimes[4]}</td>
+        </tr>
+        <tr>
+            <td>Friday</td>
+            <td>${dispTimes[5]}</td>
+        </tr>
+        <tr>
+            <td>Saturday</td>
+            <td>${dispTimes[6]}</td>
+        </tr>
+    </table>
     <style>
         * {
             text-align: center;
@@ -424,6 +429,113 @@ app.get('/debug', function (req, res) {
     res.send('<script>document.location.href="../"</script>');
 });
 
+// Modify Page
+app.get('/modify', function (req, res) {
+    na = getNextAlarm();
+    nDOTW = na.tempToday.getDay();
+    nextData = alarmData[nDOTW];
+
+    if (nextData.hours > 12) {
+        nextData.hours = nextData.hours - 12;
+        selectedIndex = 1;
+    } else {
+        selectedIndex = 0;
+    }
+
+    if (req.query.changed != undefined) {
+        dispChangedMsg = "";
+    } else {
+        dispChangedMsg = "style='display: none'";
+    }
+    res.send(`
+        <head><title>Alarm System</title></head>
+
+        <style>
+            * {
+                text-align: center;
+            }
+            input {
+                width: 10%;
+                height: 5%;
+                font-size: 15pt;
+            }
+
+            #backBtn {
+                width: 5%;
+                height: 3%;
+            }
+
+            #colon {
+                font-size: 15pt;
+            }
+
+            #ampm {
+                width: 10%;
+                height: 5%;
+                font-size: 15pt;     
+                text-align: center;
+            }
+
+            #changed {
+                color: red;
+            }
+        </style>
+
+        <h1>Modify Next Alarm (${days[nDOTW]})</h1>
+        <h2 ${dispChangedMsg} id="changed">Alarm was modified!</h2>
+        <h3>Hours:</h3>
+        <input id="hours" type="number" min="1" max="12" value="${nextData.hours}">
+        <h3>Minutes:</h3>
+        <input id="minutes" type="number" min="0" max="59" value="${nextData.minutes}"><br><br>
+        <h3>AM / PM:</h3>
+        <select name="ampm" id="ampm">
+            <option value="AM">AM</option>
+            <option value="PM">PM</option>
+        </select>
+        <br><br>
+        <input id="submit" type="submit" value="Submit" onclick="go()">
+        <br><br><br>
+        <input id="backBtn" type="button" value="Back" onclick="document.location.href = '../'">
+
+        <script>
+            function go() {
+                var hours = document.getElementById('hours').value;
+                var minutes = document.getElementById('minutes').value;
+                var amPm = document.getElementById('ampm').value;
+                document.location.href = './modify/go?hours='+hours+'&minutes='+minutes+'&ampm='+amPm;
+            }
+
+            function loop() {
+                mEl = document.getElementById('minutes');
+
+                if (mEl.value.toString().length == 1) {
+                    mEl.value = "0" + mEl.value;
+                }
+
+                setTimeout(loop,50);
+            }
+            loop();
+            document.getElementById('ampm').selectedIndex = ${selectedIndex};
+        </script>
+    `);
+});
+
+// Modify GO page
+app.get('/modify/go', function (req, res) {
+
+    queryParams = req.query;
+
+    hours = Number(queryParams.hours);
+    minutes = Number(queryParams.minutes);
+    amPm = queryParams.ampm;
+
+    if (amPm == 'PM') {
+        hours += 12;
+    }
+    modifyNext(hours,minutes);
+    res.send('<script>document.location.href="../modify?changed"</script>');
+});
+
 // -- MAIN LOOP --
 function run() {
     if (debugMode) {
@@ -432,11 +544,17 @@ function run() {
     }
     var testDate = new Date();
 
-    if (testDate.getHours() == alarmData[testDate.getDay()].hours && testDate.getMinutes() == alarmData[testDate.getDay()].minutes && testDate.getSeconds() < 3) {
+    if (testDate.getHours() == alarmData[testDate.getDay()].hours && testDate.getMinutes() == alarmData[testDate.getDay()].minutes && testDate.getSeconds() == 0) {
         if (systemActive) {
             if (!cancelled) {
+                // alarm succesfully went off
                 log('Alarm has gone off!');
                 alarmRunning = true; 
+
+                if (!modified) {
+                    alarmData = origAlarmData;
+                }
+                modified = false;
             } else {
                 cancelled = false;
                 log('Alarm was scheduled to go off, but it was set to be cancelled today.');         
@@ -462,7 +580,6 @@ run();
 log('System Starting...');
 function runTTS() {
     var d = new Date();
-    var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     var spokenDates = ["First","Second","Thi bhrd","Fourth","Fifth","Sixth","Seventh","Eighth","Ninth","Tenth","Eleventh","Twelfth","Thirteenth","Fourteenth","Fifteenth","Sixteenth","Seventeenth","Eighteenth","Nineteenth","Twentieth","Twenty-first","Twenty-second","Twenty-third","Twenty-fourth","Twenty-fifth","Twenty-sixth","Twenty-Seventh","Twenty-eighth","Twenty-Ninth","Thirtieth","Thirty-first"];
     var ttsText = "Good Morning, Today is " + days[d.getDay()] + ", " + months[d.getMonth()] + " " + spokenDates[d.getDate()-1] + ".";
@@ -524,7 +641,22 @@ function runTTS() {
     });
 }
 
-// utility functions
+function modifyNext(h,m) {
+    na = getNextAlarm();
+    dotwIndex = na.tempToday.getDay();
+    if (typeof h == "number" && typeof m == "number") {
+        alarmData[dotwIndex] = {
+            hours: h,
+            minutes: m
+        }
+        log('Alarm for ' + days[dotwIndex] + ' temp. changed to: ' + formatDNum(h) + ':' + formatDNum(m));
+        log(alarmData);
+    } else {
+        log('At least one parameter for modifyNext was not a valid number. Aborted.');
+    }
+}
+
+// -- utility functions --
 
 function addDays(date, days) {
     var result = new Date(date);
@@ -546,4 +678,59 @@ function log(msg) {
     dateDisp = formatDNum(d.getMonth() + 1) + "/" + formatDNum(d.getDate()) + "/" + formatDNum(d.getFullYear()) + " ";
     dateDisp += formatDNum(d.getHours()) + ":" + formatDNum(d.getMinutes()) + ":" + formatDNum(d.getSeconds()) + " >> ";
     console.log(dateDisp + msg);
+}
+
+function getNextAlarm() {
+   // get next alarm  
+   var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+   var today  = new Date();
+   var todayAlarm = alarmData[today.getDay()];
+   var todayAlarmUnix = new Date((today.getMonth() + 1) + "/" + today.getDate() + "/" + today.getFullYear()+" " + todayAlarm.hours + ":" + todayAlarm.minutes + ":0").getTime();
+   if (todayAlarmUnix > today.getTime()) {
+       // alarm still has not happened yet today
+       var tempToday;
+       if (cancelled) {
+           var dotw = today.getDay() + 1;
+           if (dotw == 7) {
+               dotw = 0;
+           }   
+           tempToday = addDays(today,1);
+       } else {
+           dotw = today.getDay();
+           tempToday = today;
+       }
+       var nAlarm = alarmData[today.getDay()];
+   } else {
+       // alarm has happened today, get tommorow's alarm
+       var tempToday;
+       if (cancelled) {
+           var dotw = today.getDay() + 2;
+           if (dotw == 8) {
+               dotw = 1;
+           }   
+           tempToday = addDays(today,2);
+       } else {
+           var dotw = today.getDay() + 1;
+           if (dotw == 7) {
+               dotw = 0;
+           }   
+           tempToday = addDays(today,1);
+       }
+       var nAlarm = alarmData[tempToday.getDay()];
+   }
+   var dotwIndex = tempToday.getDay();
+
+   if (cancelled) {
+       dotwIndex--;
+       if (dotwIndex == -1) {
+           dotwIndex = 6;
+       }
+   }
+   var cancelledDOTW = days[dotwIndex];
+   var nAlarmUnix = new Date((tempToday.getMonth() + 1) + "/" + tempToday.getDate() + "/" + tempToday.getFullYear()+" " + nAlarm.hours + ":" + nAlarm.minutes + ":0").getTime();
+   return {
+    nAlarmUnix: nAlarmUnix,
+    cancelledDOTW: cancelledDOTW,
+    tempToday: tempToday
+   }
 }
