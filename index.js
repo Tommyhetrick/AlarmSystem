@@ -14,7 +14,6 @@ const soundLength = 3;
 const timeOffset = 4;
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 var cancelled = false;
-var modified = false;
 // ALARM TIMES
 var alarmData = [
 
@@ -55,7 +54,7 @@ var alarmData = [
     }
 ];
 
-const origAlarmData = alarmData;
+const origAlarmData = alarmData.slice(0);
 // event (memories) data. end with a period
 const eventData = [
     {
@@ -64,7 +63,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-// other events here were redacted
+    // other events were redacted... :)
 ];
 
 // -- Script start --
@@ -447,6 +446,11 @@ app.get('/modify', function (req, res) {
     } else {
         dispChangedMsg = "style='display: none'";
     }
+    if (req.query.reset != undefined) {
+        dispResetMsg = "";
+    } else {
+        dispResetMsg = "style='display: none'";
+    }
     res.send(`
         <head><title>Alarm System</title></head>
 
@@ -465,6 +469,11 @@ app.get('/modify', function (req, res) {
                 height: 3%;
             }
 
+            #resetBtn {
+                width: 6%;
+                height: 3%;
+                font-size: 12pt;  
+            }
             #colon {
                 font-size: 15pt;
             }
@@ -476,13 +485,17 @@ app.get('/modify', function (req, res) {
                 text-align: center;
             }
 
-            #changed {
+            #changedMsg {
+                color: red;
+            }
+            #resetMsg {
                 color: red;
             }
         </style>
 
         <h1>Modify Next Alarm (${days[nDOTW]})</h1>
-        <h2 ${dispChangedMsg} id="changed">Alarm was modified!</h2>
+        <h2 ${dispChangedMsg} id="changedMsg">Alarm was modified!</h2>
+        <h2 ${dispResetMsg} id="resetMsg">All Alarms Were Reset To Default Values! (Put a cancel in if the default time is still in the future)</h2>
         <h3>Hours:</h3>
         <input id="hours" type="number" min="1" max="12" value="${nextData.hours}">
         <h3>Minutes:</h3>
@@ -494,6 +507,8 @@ app.get('/modify', function (req, res) {
         </select>
         <br><br>
         <input id="submit" type="submit" value="Submit" onclick="go()">
+        <br><br><br>
+        <input id="resetBtn" type="button" value="Reset" onclick="document.location.href = '../'">
         <br><br><br>
         <input id="backBtn" type="button" value="Back" onclick="document.location.href = '../'">
 
@@ -514,7 +529,19 @@ app.get('/modify', function (req, res) {
 
                 setTimeout(loop,50);
             }
+
+            function defaultResetBtn() {
+                document.getElementById('resetBtn').value = "Reset All";
+                document.getElementById('resetBtn').onclick = () => {
+                    document.getElementById('resetBtn').value = "Press Again";
+                    document.getElementById('resetBtn').onclick = () => {
+                        document.location.href='./modify/reset';
+                    }
+                    setTimeout(defaultResetBtn,5000);
+                };    
+            }
             loop();
+            defaultResetBtn();
             document.getElementById('ampm').selectedIndex = ${selectedIndex};
         </script>
     `);
@@ -536,6 +563,12 @@ app.get('/modify/go', function (req, res) {
     res.send('<script>document.location.href="../modify?changed"</script>');
 });
 
+// Modify GO page
+app.get('/modify/reset', function (req, res) {
+    alarmData = origAlarmData.slice(0);
+    res.send('<script>document.location.href="../modify?reset"</script>');
+});
+
 // -- MAIN LOOP --
 function run() {
     if (debugMode) {
@@ -551,10 +584,6 @@ function run() {
                 log('Alarm has gone off!');
                 alarmRunning = true; 
 
-                if (!modified) {
-                    alarmData = origAlarmData;
-                }
-                modified = false;
             } else {
                 cancelled = false;
                 log('Alarm was scheduled to go off, but it was set to be cancelled today.');         
