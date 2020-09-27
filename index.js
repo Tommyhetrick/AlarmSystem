@@ -54,7 +54,7 @@ var alarmData = [
     }
 ];
 
-const origAlarmData = alarmData.slice(0);
+const origAlarmData = JSON.parse(JSON.stringify(alarmData));
 // event (memories) data. end with a period
 const eventData = [
     {
@@ -63,7 +63,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-    // other events were redacted... :)
+   // rest were redacted :)
 ];
 
 // -- Script start --
@@ -78,7 +78,6 @@ app.get('/', function (req, res) {
     nAlarmUnix = na.nAlarmUnix;
     cancelledDOTW = na.cancelledDOTW;
     tempToday = na.tempToday;  
-    //var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     if (systemActive) {
         toggleBtnTxt = "Turn System Off";
         backgroundClr = "white";
@@ -112,17 +111,25 @@ app.get('/', function (req, res) {
         stopBtnMod = "style='background-color: rgb(127,127,127)'";
     }
 
-    var dispTimes = alarmData.slice(0);
+    var dispTimes = JSON.parse(JSON.stringify(alarmData));
 
     for (var i=0;i<dispTimes.length;i++) {
         let amPm = "AM";
-        if (dispTimes[i].hours > 12) {
-            dispTimes[i].hours -= 12;
+        if (dispTimes[i].hours >= 12) {
+            if (dispTimes[i].hours != 12) {
+                dispTimes[i].hours -= 12;
+            }
             amPm = "PM";
         }
+
+        // special case for midnight
+        if (amPm == "AM" && dispTimes[i].hours == 0) {
+            dispTimes[i].hours = 12;
+        }
         dispTimes[i].minutes = formatDNum(dispTimes[i].minutes);
-        dispTimes[i] = dispTimes[i].hours + ":" + dispTimes[i].minutes + " " +amPm;
+        dispTimes[i] = dispTimes[i].hours + ":" + dispTimes[i].minutes + " " + amPm;
     };
+
     //send back homepage
     res.send(`
     <head>
@@ -432,11 +439,15 @@ app.get('/debug', function (req, res) {
 app.get('/modify', function (req, res) {
     na = getNextAlarm();
     nDOTW = na.tempToday.getDay();
-    nextData = alarmData[nDOTW];
+    nextData = JSON.parse(JSON.stringify(alarmData[nDOTW]));
 
-    if (nextData.hours > 12) {
-        nextData.hours = nextData.hours - 12;
+    if (nextData.hours >= 12) {
+        if (nextData.hours != 12) {
+            nextData.hours = nextData.hours - 12;   
+        }
         selectedIndex = 1;
+    } else if (nextData.hours == 0) {
+        nextData.hours = 12;
     } else {
         selectedIndex = 0;
     }
@@ -557,7 +568,12 @@ app.get('/modify/go', function (req, res) {
     amPm = queryParams.ampm;
 
     if (amPm == 'PM') {
-        hours += 12;
+        if (hours != 12) {
+            hours += 12;
+        }
+    }
+    if (hours == 12 && amPm == "AM") {
+        hours = 0;
     }
     modifyNext(hours,minutes);
     res.send('<script>document.location.href="../modify?changed"</script>');
@@ -565,12 +581,13 @@ app.get('/modify/go', function (req, res) {
 
 // Modify GO page
 app.get('/modify/reset', function (req, res) {
-    alarmData = origAlarmData.slice(0);
+    alarmData = JSON.parse(JSON.stringify(origAlarmData));
     res.send('<script>document.location.href="../modify?reset"</script>');
 });
 
 // -- MAIN LOOP --
 function run() {
+    //console.log(alarmData[1].hours);
     if (debugMode) {
         // will only happen if debug is toggled on
         console.log(new Date());      
@@ -674,12 +691,9 @@ function modifyNext(h,m) {
     na = getNextAlarm();
     dotwIndex = na.tempToday.getDay();
     if (typeof h == "number" && typeof m == "number") {
-        alarmData[dotwIndex] = {
-            hours: h,
-            minutes: m
-        }
+        alarmData[dotwIndex].hours = h;
+        alarmData[dotwIndex].minutes = m;
         log('Alarm for ' + days[dotwIndex] + ' temp. changed to: ' + formatDNum(h) + ':' + formatDNum(m));
-        log(alarmData);
     } else {
         log('At least one parameter for modifyNext was not a valid number. Aborted.');
     }
