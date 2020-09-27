@@ -63,7 +63,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-   // rest were redacted :)
+   // other events were redacted :)
 ];
 
 // -- Script start --
@@ -499,12 +499,37 @@ app.get('/modify', function (req, res) {
             #changedMsg {
                 color: red;
             }
+
             #resetMsg {
                 color: red;
             }
+
+            #header {
+              font-size: 35pt;  
+              font-weight: bold;
+            }
+
+            #dotw {
+                width: 15%;
+                height: 8%;
+                font-size: 35pt;
+                font-weight: bold;
+                border: 1px solid #fff;
+                background-color: transparent;
+            }
         </style>
 
-        <h1>Modify Next Alarm (${days[nDOTW]})</h1>
+        <p id="header">Modify Alarm on 
+        <select name="dotw" id="dotw">
+        <option value="Sunday">Sunday</option>
+        <option value="Monday">Monday</option>
+        <option value="Tuesday">Tuesday</option>
+        <option value="Wednesday">Wednesday</option>
+        <option value="Thursday">Thursday</option>
+        <option value="Friday">Friday</option>
+        <option value="Saturday">Saturday</option>
+        </select>
+        </p>
         <h2 ${dispChangedMsg} id="changedMsg">Alarm was modified!</h2>
         <h2 ${dispResetMsg} id="resetMsg">All Alarms Were Reset To Default Values! (Put a cancel in if the default time is still in the future)</h2>
         <h3>Hours:</h3>
@@ -528,7 +553,8 @@ app.get('/modify', function (req, res) {
                 var hours = document.getElementById('hours').value;
                 var minutes = document.getElementById('minutes').value;
                 var amPm = document.getElementById('ampm').value;
-                document.location.href = './modify/go?hours='+hours+'&minutes='+minutes+'&ampm='+amPm;
+                var dotw = document.getElementById('dotw').selectedIndex;
+                document.location.href = './modify/go?hours='+hours+'&minutes='+minutes+'&ampm='+amPm+'&dotw='+dotw;
             }
 
             function loop() {
@@ -554,6 +580,7 @@ app.get('/modify', function (req, res) {
             loop();
             defaultResetBtn();
             document.getElementById('ampm').selectedIndex = ${selectedIndex};
+            document.getElementById('dotw').selectedIndex = ${nDOTW};
         </script>
     `);
 });
@@ -563,10 +590,10 @@ app.get('/modify/go', function (req, res) {
 
     queryParams = req.query;
 
+    dotw = Number(queryParams.dotw);
     hours = Number(queryParams.hours);
     minutes = Number(queryParams.minutes);
     amPm = queryParams.ampm;
-
     if (amPm == 'PM') {
         if (hours != 12) {
             hours += 12;
@@ -575,7 +602,7 @@ app.get('/modify/go', function (req, res) {
     if (hours == 12 && amPm == "AM") {
         hours = 0;
     }
-    modifyNext(hours,minutes);
+    modifyAlarm(dotw,hours,minutes);
     res.send('<script>document.location.href="../modify?changed"</script>');
 });
 
@@ -687,13 +714,12 @@ function runTTS() {
     });
 }
 
-function modifyNext(h,m) {
-    na = getNextAlarm();
-    dotwIndex = na.tempToday.getDay();
-    if (typeof h == "number" && typeof m == "number") {
-        alarmData[dotwIndex].hours = h;
-        alarmData[dotwIndex].minutes = m;
-        log('Alarm for ' + days[dotwIndex] + ' temp. changed to: ' + formatDNum(h) + ':' + formatDNum(m));
+function modifyAlarm(dotw,h,m) {
+    
+    if (typeof h == "number" && typeof m == "number" && typeof dotw == "number") {
+        alarmData[dotw].hours = h;
+        alarmData[dotw].minutes = m;
+        log('Alarm for ' + days[dotw] + ' temp. changed to: ' + formatDNum(h) + ':' + formatDNum(m));
     } else {
         log('At least one parameter for modifyNext was not a valid number. Aborted.');
     }
