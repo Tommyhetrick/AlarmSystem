@@ -106,9 +106,9 @@ app.get('/', function (req, res) {
     }
 
     if (alarmRunning) {
-        stopBtnMod = "";
+        stopBtnMod = "style='background-color: white;'";
     } else {
-        stopBtnMod = "style='background-color: rgb(127,127,127)'";
+        stopBtnMod = "style='background-color: rgb(127,127,127);'";
     }
 
     var dispTimes = JSON.parse(JSON.stringify(alarmData));
