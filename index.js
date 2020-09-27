@@ -63,7 +63,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-   // other events were redacted :)
+   // other events redacted :)
 ];
 
 // -- Script start --
@@ -241,6 +241,7 @@ app.get('/', function (req, res) {
         nextAlarm = "Next Alarm (${days[tempToday.getDay()]}) : ";
         if (diff <= 0) {
             nextAlarm += "Now!";
+            document.getElementById('stop').style = "background-color: white";
         } else {
             diff /= 1000;
             hours = Math.floor(diff / 3600);
@@ -437,9 +438,13 @@ app.get('/debug', function (req, res) {
 
 // Modify Page
 app.get('/modify', function (req, res) {
+    if (!req.query.dotw) {
     na = getNextAlarm();
     nDOTW = na.tempToday.getDay();
-    nextData = JSON.parse(JSON.stringify(alarmData[nDOTW]));
+    } else {
+        nDOTW = Number(req.query.dotw);
+    }
+    nextData = JSON.parse(JSON.stringify(alarmData[nDOTW])); // this line is the worst thing to ever exist
 
     if (nextData.hours >= 12) {
         if (nextData.hours != 12) {
@@ -520,7 +525,7 @@ app.get('/modify', function (req, res) {
         </style>
 
         <p id="header">Modify Alarm on 
-        <select name="dotw" id="dotw">
+        <select name="dotw" id="dotw" onchange="document.location.href='./modify?dotw='+document.getElementById('dotw').selectedIndex;;">
         <option value="Sunday">Sunday</option>
         <option value="Monday">Monday</option>
         <option value="Tuesday">Tuesday</option>
@@ -603,7 +608,7 @@ app.get('/modify/go', function (req, res) {
         hours = 0;
     }
     modifyAlarm(dotw,hours,minutes);
-    res.send('<script>document.location.href="../modify?changed"</script>');
+    res.send('<script>document.location.href="../modify?changed&dotw='+dotw+'"</script>');
 });
 
 // Modify GO page
@@ -715,7 +720,7 @@ function runTTS() {
 }
 
 function modifyAlarm(dotw,h,m) {
-    
+
     if (typeof h == "number" && typeof m == "number" && typeof dotw == "number") {
         alarmData[dotw].hours = h;
         alarmData[dotw].minutes = m;
