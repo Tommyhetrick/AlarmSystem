@@ -3,16 +3,21 @@ const fs = require('fs');
 const express = require('express');
 const { exec } = require('child_process');
 const { SSL_OP_TLS_BLOCK_PADDING_BUG } = require('constants');
+const inkjet = require('inkjet');
 require('dotenv').config();
 const app = express();
 const rootDir = "/home/pi/alarm";
 var alarmRunning = false;
 var systemActive = true;
 var debugMode = false;
+const soundOn = true;
+const useWebcam = true;
 const port = 80;
 const soundLength = 3;
 const timeOffset = 4;
+const camThreshold = 250000;
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+var previousData = [];
 var cancelled = false;
 // ALARM TIMES
 var alarmData = [
@@ -63,7 +68,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-   // other events redacted :)
+// rest of events redacted. :)
 ];
 
 // -- Script start --
@@ -285,7 +290,9 @@ app.get('/stop', function (req, res) {
             },2500);
         </script>
         `);
-        setTimeout(runTTS(),soundLength);
+        if (soundOn) {
+            setTimeout(runTTS(),soundLength);
+        }
     } else {
         log('Alarm stopping webserver accessed, but alarm was already stopped');
         res.send(`
@@ -617,9 +624,14 @@ app.get('/modify/reset', function (req, res) {
     res.send('<script>document.location.href="../modify?reset"</script>');
 });
 
+// Camera page
+app.use('/cam', express.static('public'))
+
 // -- MAIN LOOP --
 function run() {
-    //console.log(alarmData[1].hours);
+    takePicture();
+
+
     if (debugMode) {
         // will only happen if debug is toggled on
         console.log(new Date());      
@@ -641,7 +653,7 @@ function run() {
             log('Alarm was scheduled to go off, but the system is currently inactive.');
         }
     }
-    if (new Date().getSeconds() % (soundLength+1) == 0 && alarmRunning) {
+    if (new Date().getSeconds() % (soundLength+1) == 0 && alarmRunning && soundOn) {
         exec(`sudo omxplayer ${rootDir}/alarm_sfx.mp3 --vol 100`, (err, stdout, stderr) => {
             if (err) {
                 //console.error(err)
@@ -708,8 +720,8 @@ function runTTS() {
         if (err) {
             console.error(err)
         } else {
-            console.log(`stdout: ${stdout}`);
-            console.log(`stderr: ${stderr}`);
+            //console.log(`stdout: ${stdout}`);
+            //console.log(`stderr: ${stderr}`);
             exec(`sudo omxplayer ${rootDir}/tts_out.wav --vol 100`, (err, stdout, stderr) => {
                 if (err) {
                     //console.error(err)
@@ -727,6 +739,53 @@ function modifyAlarm(dotw,h,m) {
         log('Alarm for ' + days[dotw] + ' temp. changed to: ' + formatDNum(h) + ':' + formatDNum(m));
     } else {
         log('At least one parameter for modifyNext was not a valid number. Aborted.');
+    }
+}
+
+function takePicture() {
+    if (useWebcam && alarmRunning) {
+
+        // take the picture
+        exec(`sudo fswebcam  --no-banner --no-timestamp --crop 170x60,150x100 public/cam.jpg`, (err, stdout, stderr) => {
+                var camResolution = [170,60];
+                // vertical offset;
+                var camOffset = 0;
+                inkjet.decode(fs.readFileSync('public/cam.jpg'), (err, decoded) => {
+                    if (!err) {
+                        camData = Array.from(decoded.data);
+                        if (camOffset > 0) {
+                            camData.splice(0,(camOffset*camResolution[0]*4)-1);
+                        }
+        
+                        if (previousData.length > 1) {
+                            camDiff = 0;
+                            for (var i=0;i<camData.length-3;i += 4) {
+                                currentTotal = camData[i] + camData[i+1] + camData[i+3];
+                                previousTotal = previousData[i] + previousData[i+1] + previousData[i+3];
+                                camDiff += Math.abs(previousTotal - currentTotal);
+                            }
+
+                            if (camDiff >= camThreshold) {
+                                if (alarmRunning) {
+                                    log("Alarm stopped due to webcam trigger!");
+                                    alarmRunning = false;
+                                    if (soundOn) {
+                                        setTimeout(runTTS,soundLength);
+                                    }
+                                } else {
+                                    log("Webcam trigger activated, but alarm was already stopped.");                             
+                                }
+                            }
+                            if (debugMode) {
+                                console.log("Webcam Diff: " + camDiff);
+                            }
+                        }
+                        previousData = JSON.parse(JSON.stringify(camData));
+                    }
+                });
+        });
+    } else {
+        return false;
     }
 }
 
