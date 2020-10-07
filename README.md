@@ -8,7 +8,7 @@ Dependencies:
 [Express](https://expressjs.com)
 [dotenv](https://github.com/motdotla/dotenv)
 [InkJet](https://www.npmjs.com/package/inkjet) (Optional for webcam feature)
-[fswebcam](https://github.com/fsphil/fswebcam) (Optioanl for webcam feature)
+[fswebcam](https://github.com/fsphil/fswebcam) (Optional for webcam feature)
 Important:
 You need to create a service on IBM Watson Cloud for Text to Speech and enter the details in the .env file in the root.
 alarn_sfx.mp3 must exist in the root directory.
