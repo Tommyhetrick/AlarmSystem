@@ -68,7 +68,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-// rest of events redacted. :)
+// events were redacted :)
 ];
 
 // -- Script start --
@@ -149,6 +149,7 @@ app.get('/', function (req, res) {
     <input type="button" id="cancel" value="Cancel Status" onclick="document.location.href='./cancel'" ${hideableObj}>
     <input type="button" id="Modify" ${hideableObj} value="Modify Next" onclick="document.location.href='./modify'">
     <input type="button" id="test">
+    <input type="button" id="forcePicture" ${hideableObj} value="Take Picture" onclick="document.location.href='./cam/force'">
     <br>
     <p id="countdown" ${hideableObj}></p>
     <br>
@@ -624,12 +625,19 @@ app.get('/modify/reset', function (req, res) {
     res.send('<script>document.location.href="../modify?reset"</script>');
 });
 
+// Force Picture Take page
+app.get('/cam/force', function (req, res) {
+    takePicture(true);
+    res.send('<script>document.location.href="../cam"</script>');
+});
+
 // Camera page
 app.use('/cam', express.static('public'))
 
 // -- MAIN LOOP --
 function run() {
-    takePicture();
+    // take picture
+    takePicture(false);
 
 
     if (debugMode) {
@@ -742,8 +750,8 @@ function modifyAlarm(dotw,h,m) {
     }
 }
 
-function takePicture() {
-    if (useWebcam && alarmRunning) {
+function takePicture(ignoreConditions) {
+    if ((useWebcam && alarmRunning) || ignoreConditions) {
 
         // take the picture
         exec(`sudo fswebcam  --no-banner --no-timestamp --crop 170x60,150x100 public/cam.jpg`, (err, stdout, stderr) => {
