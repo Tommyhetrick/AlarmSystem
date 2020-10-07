@@ -1,0 +1,14 @@
+<head><title>Alarm System</title></head>
+
+
+<img id='img'></img>
+<script>;
+    function updateCam() {
+        camImg = document.getElementById('img');
+        d = new Date();
+        camImg.src = "cam.jpg?ts="+ Date.now();
+        setTimeout(updateCam,1500);
+    }
+
+    updateCam();
+</script>
