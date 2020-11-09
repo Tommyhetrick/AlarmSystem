@@ -10,15 +10,34 @@ const rootDir = "/home/pi/alarm";
 var alarmRunning = false;
 var systemActive = true;
 var debugMode = false;
-const soundOn = true;
 const useWebcam = true;
 const port = 80;
 const soundLength = 3;
-const timeOffset = 4;
 const camThreshold = 250000;
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 var previousData = [];
 var cancelled = false;
+var unmodifyDays = 3;
+var modifiedData = [
+    [false,0],
+    [false,0],
+    [false,0],
+    [false,0],
+    [false,0],
+    [false,0],
+    [false,0]
+];
+var settings = {
+    debugLogTime: {
+        value: false,
+        label: "Log time in debug"
+    },
+    soundOn: {
+        value: true,
+        label: "Sound On"
+    }
+};
+
 // ALARM TIMES
 var alarmData = [
 
@@ -68,7 +87,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-// events were redacted :)
+   // rest are redacted :)
 ];
 
 // -- Script start --
@@ -131,8 +150,23 @@ app.get('/', function (req, res) {
         if (amPm == "AM" && dispTimes[i].hours == 0) {
             dispTimes[i].hours = 12;
         }
+
+        // get countdown of auto reset modified
+        if (debugMode && modifiedData[i][0]) {
+            modifyTimeConsts = [86400,3600,60];
+            modifyUnixDiff = (unmodifyDays*24*60*60) - ((new Date().getTime() - modifiedData[i][1])/1000);
+            modifyDays = Math.floor(modifyUnixDiff/modifyTimeConsts[0]);
+            modifyUnixDiff -= modifyDays * modifyTimeConsts[0];
+            modifyHours = Math.floor(modifyUnixDiff/modifyTimeConsts[1]);
+            modifyUnixDiff -= modifyHours * modifyTimeConsts[1];      
+            modifyMinutes = Math.floor(modifyUnixDiff/modifyTimeConsts[2]);
+            modifyUnixDiff -= modifyMinutes * modifyTimeConsts[2];      
+            modifyCountdown = " " + formatDNum(modifyDays) + ":" + formatDNum(modifyHours) + ":" + formatDNum(modifyMinutes) + ":" + formatDNum(Math.floor(modifyUnixDiff));
+        } else {
+            modifyCountdown = "";
+        }
         dispTimes[i].minutes = formatDNum(dispTimes[i].minutes);
-        dispTimes[i] = dispTimes[i].hours + ":" + dispTimes[i].minutes + " " + amPm;
+        dispTimes[i] = (modifiedData[i][0] ? " style='color:red'" : "") + ">" + dispTimes[i].hours + ":" + dispTimes[i].minutes + " " + amPm + modifyCountdown;
     };
 
     //send back homepage
@@ -150,6 +184,7 @@ app.get('/', function (req, res) {
     <input type="button" id="Modify" ${hideableObj} value="Modify Next" onclick="document.location.href='./modify'">
     <input type="button" id="test">
     <input type="button" id="forcePicture" ${hideableObj} value="Take Picture" onclick="document.location.href='./cam/force'">
+    <input type="button" id="settings" value="Settings" onclick="document.location.href='./settings'">
     <br>
     <p id="countdown" ${hideableObj}></p>
     <br>
@@ -172,31 +207,31 @@ app.get('/', function (req, res) {
         </tr>
         <tr>
             <td>Sunday</td>
-            <td>${dispTimes[0]}</td>
+            <td${dispTimes[0]}</td>
         </tr>
         <tr>
             <td>Monday</td>
-            <td>${dispTimes[1]}</td>
+            <td${dispTimes[1]}</td>
         </tr>
         <tr>
             <td>Tuesday</td>
-            <td>${dispTimes[2]}</td>
+            <td${dispTimes[2]}</td>
         </tr>
         <tr>
             <td>Wednesday</td>
-            <td>${dispTimes[3]}</td>
+            <td${dispTimes[3]}</td>
         </tr>
         <tr>
             <td>Thursday</td>
-            <td>${dispTimes[4]}</td>
+            <td${dispTimes[4]}</td>
         </tr>
         <tr>
             <td>Friday</td>
-            <td>${dispTimes[5]}</td>
+            <td${dispTimes[5]}</td>
         </tr>
         <tr>
             <td>Saturday</td>
-            <td>${dispTimes[6]}</td>
+            <td${dispTimes[6]}</td>
         </tr>
     </table>
     <style>
@@ -291,7 +326,7 @@ app.get('/stop', function (req, res) {
             },2500);
         </script>
         `);
-        if (soundOn) {
+        if (settings.soundOn.value) {
             setTimeout(runTTS(),soundLength);
         }
     } else {
@@ -391,6 +426,45 @@ app.get('/cancel', function (req, res) {
         <br>
         <h2>Status: ${cancelledString}<h2> <input id="cancelBtn" type="button" value="${buttonText}" onclick="document.location.href='${buttonLink}'"><br><br>
         <input  id="backBtn" type="button" value="Back" onclick="document.location.href = '../'">
+    `);
+});
+
+// -- Settings Page --
+app.get('/settings', function (req, res) {
+    pageData = "";
+    for (var i=0;i<Object.keys(settings).length;i++) {
+        pageData += settings[Object.keys(settings)[i]].label + " : " + settings[Object.keys(settings)[i]].value + "<br>";
+        pageData += `<input  id='backBtn' type='button' value='Toggle' onclick='document.location.href = "/settings/toggle?which=${Object.keys(settings)[i]}"'><br><br>`;
+    }
+
+    res.send(`
+        <head><title>Alarm System</title></head>
+
+        <style>
+            * {
+                text-align: center;
+            }
+
+            #backBtn {
+                width: 5%;
+                height: 3%;
+            }
+        </style>
+        <h1>Settings</h1>
+        <br>
+        ${pageData}
+        <br>
+        <input  id="backBtn" type="button" value="Back" onclick="document.location.href = '../'">
+    `);
+});
+
+// -- Settings Toggle --
+app.get('/settings/toggle', function (req, res) {
+    if (req.query.which) {
+        settings[req.query.which].value = !settings[req.query.which].value;
+    }
+    res.send(`
+    <script>document.location.href="/settings"</script>
     `);
 });
 
@@ -640,12 +714,13 @@ function run() {
     takePicture(false);
 
 
-    if (debugMode) {
-        // will only happen if debug is toggled on
+    if (debugMode && settings.debugLogTime.value) {
+        // will only happen if debug is toggled on and setting is on
         console.log(new Date());      
     }
     var testDate = new Date();
 
+    // test alarm
     if (testDate.getHours() == alarmData[testDate.getDay()].hours && testDate.getMinutes() == alarmData[testDate.getDay()].minutes && testDate.getSeconds() == 0) {
         if (systemActive) {
             if (!cancelled) {
@@ -661,7 +736,8 @@ function run() {
             log('Alarm was scheduled to go off, but the system is currently inactive.');
         }
     }
-    if (new Date().getSeconds() % (soundLength+1) == 0 && alarmRunning && soundOn) {
+    // play sound
+    if (new Date().getSeconds() % (soundLength+1) == 0 && alarmRunning && settings.soundOn.value) {
         exec(`sudo omxplayer ${rootDir}/alarm_sfx.mp3 --vol 100`, (err, stdout, stderr) => {
             if (err) {
                 //console.error(err)
@@ -671,11 +747,26 @@ function run() {
             }
         });
     }
+
+    // test to automatically turn off modified alarms
+    for (var i=0;i<modifiedData.length;i++) {
+        if (modifiedData[i][0]) {
+            if ((new Date().getTime() - modifiedData[i][1]) >= 1000*(unmodifyDays*24*60*60)) {
+                modifiedData[i] = [false,0];
+                alarmData[i] = {
+                    hours: origAlarmData[i].hours,
+                    minutes: origAlarmData[i].minutes
+                };
+                log("Alarm for " + days[i] + " was reset to its default time of " + formatDNum(alarmData[i].hours) + ":" + formatDNum(alarmData[i].minutes)) + " automatically, because it has been active for " + unmodifyDays;
+            }
+        }
+    }
     setTimeout(run,1000);
 }
 //alarmRunning = true;
 run();
 log('System Starting...');
+
 function runTTS() {
     var d = new Date();
     var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -744,6 +835,7 @@ function modifyAlarm(dotw,h,m) {
     if (typeof h == "number" && typeof m == "number" && typeof dotw == "number") {
         alarmData[dotw].hours = h;
         alarmData[dotw].minutes = m;
+        modifiedData[dotw] = [true,new Date().getTime()];
         log('Alarm for ' + days[dotw] + ' temp. changed to: ' + formatDNum(h) + ':' + formatDNum(m));
     } else {
         log('At least one parameter for modifyNext was not a valid number. Aborted.');
@@ -777,7 +869,7 @@ function takePicture(ignoreConditions) {
                                 if (alarmRunning) {
                                     log("Alarm stopped due to webcam trigger!");
                                     alarmRunning = false;
-                                    if (soundOn) {
+                                    if (settings.soundOn.value) {
                                         setTimeout(runTTS,soundLength);
                                     }
                                 } else {
