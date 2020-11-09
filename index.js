@@ -87,7 +87,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-   // rest are redacted :)
+   // rest were redacted :)
 ];
 
 // -- Script start --
@@ -124,9 +124,9 @@ app.get('/', function (req, res) {
     }
 
     if (debugMode) {
-        toggleDebugTxt = "Disable Console Debug";
+        toggleDebugTxt = "Disable Debug Mode";
     } else {
-        toggleDebugTxt = "Enable Console Debug";     
+        toggleDebugTxt = "Enable Debug Mode";     
     }
 
     if (alarmRunning) {
@@ -510,10 +510,10 @@ app.get('/toggle', function (req, res) {
 app.get('/debug', function (req, res) {
     if (debugMode) {
         debugMode = false;
-        log('Console Debug Turned Off');
+        log('Debug Mode Turned Off');
     } else {
         debugMode = true;
-        log('Console Debug Turned On');
+        log('Debug Mode Turned On');
     }
     res.send('<script>document.location.href="../"</script>');
 });
@@ -693,9 +693,12 @@ app.get('/modify/go', function (req, res) {
     res.send('<script>document.location.href="../modify?changed&dotw='+dotw+'"</script>');
 });
 
-// Modify GO page
+// Modify reset page
 app.get('/modify/reset', function (req, res) {
     alarmData = JSON.parse(JSON.stringify(origAlarmData));
+    for (var i=0;i<modifiedData.length;i++) {
+        modifiedData[i] = [false,0];
+    }
     res.send('<script>document.location.href="../modify?reset"</script>');
 });
 
