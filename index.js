@@ -4,6 +4,7 @@ const express = require('express');
 const { exec } = require('child_process');
 const { SSL_OP_TLS_BLOCK_PADDING_BUG } = require('constants');
 const inkjet = require('inkjet');
+const { stderr } = require('process');
 require('dotenv').config();
 const app = express();
 const rootDir = "/home/pi/alarm";
@@ -13,11 +14,12 @@ var debugMode = false;
 const useWebcam = true;
 const port = 80;
 const soundLength = 3;
-const camThreshold = 250000;
+const camThreshold = 325000;
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 var previousData = [];
 var cancelled = false;
 var unmodifyDays = 3;
+var photoID = '';
 var modifiedData = [
     [false,0],
     [false,0],
@@ -87,7 +89,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-   // rest were redacted :)
+// rest were redacted :)
 ];
 
 // -- Script start --
@@ -96,7 +98,7 @@ const eventData = [
 app.listen(port, () => {
     log(`Express app listening at http://localhost:${port}`);
 });
-//app.use('/', express.static('public'));
+
 app.get('/', function (req, res) {
     na = getNextAlarm();
     nAlarmUnix = na.nAlarmUnix;
@@ -705,11 +707,39 @@ app.get('/modify/reset', function (req, res) {
 // Force Picture Take page
 app.get('/cam/force', function (req, res) {
     takePicture(true);
-    res.send('<script>document.location.href="../cam"</script>');
+    res.send(`
+    <p>Please wait</p>
+    <script>
+        setTimeout(() => {
+            document.location.href = "../cam";
+        },1000);
+    </script>
+    `);
 });
 
-// Camera page
-app.use('/cam', express.static('public'))
+// Storage page (for camera photo)
+app.use('/storage', express.static('public'))
+
+// Camera Page
+app.get('/cam', function (req, res) {
+    res.send(`
+    <head><title>Alarm System</title></head>
+
+
+    <img id='img'></img>
+    <script>;
+        function updateCam() {
+            camImg = document.getElementById('img');
+            d = new Date();
+            camImg.src = "../storage/cam_${photoID}.jpg?ts="+ Date.now();
+            //setTimeout(updateCam,1500);
+        }
+
+        updateCam();
+    </script>
+    
+    `);
+});
 
 // -- MAIN LOOP --
 function run() {
@@ -848,12 +878,23 @@ function modifyAlarm(dotw,h,m) {
 function takePicture(ignoreConditions) {
     if ((useWebcam && alarmRunning) || ignoreConditions) {
 
+        // generate unqiue ID
+
+        photoID = Math.random().toString(36).substr(2, 10);
+
+        // remove previous picture
+        exec(`rm -f public/*.jpg`, (err, stdout, stderr) => {
+            if (err) {
+                console.log(err);
+            }
+        });
+
         // take the picture
-        exec(`sudo fswebcam  --no-banner --no-timestamp --crop 170x60,150x100 public/cam.jpg`, (err, stdout, stderr) => {
-                var camResolution = [170,60];
+        exec(`sudo fswebcam  --no-banner --no-timestamp --crop 170x60,150x100 public/cam_${photoID}.jpg`, (err, stdout, stderr) => {
+            var camResolution = [170,60];
                 // vertical offset;
                 var camOffset = 0;
-                inkjet.decode(fs.readFileSync('public/cam.jpg'), (err, decoded) => {
+                inkjet.decode(fs.readFileSync(`public/cam_${photoID}.jpg`), (err, decoded) => {
                     if (!err) {
                         camData = Array.from(decoded.data);
                         if (camOffset > 0) {
