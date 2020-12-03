@@ -4,13 +4,14 @@ const express = require('express');
 const { exec } = require('child_process');
 const { SSL_OP_TLS_BLOCK_PADDING_BUG } = require('constants');
 const inkjet = require('inkjet');
-const { stderr } = require('process');
+const { stderr, stdout } = require('process');
 require('dotenv').config();
 const app = express();
 const rootDir = "/home/pi/alarm";
 var alarmRunning = false;
 var systemActive = true;
 var debugMode = false;
+var usesDongle = true;
 const useWebcam = true;
 const port = 80;
 const soundLength = 3;
@@ -185,7 +186,7 @@ app.get('/', function (req, res) {
     <input type="button" id="cancel" value="Cancel Status" onclick="document.location.href='./cancel'" ${hideableObj}>
     <input type="button" id="Modify" ${hideableObj} value="Modify Next" onclick="document.location.href='./modify'">
     <input type="button" id="test">
-    <input type="button" id="forcePicture" ${hideableObj} value="Take Picture" onclick="document.location.href='./cam/force'">
+    <input type="button" id="cam" ${hideableObj} value="Camera" onclick="document.location.href='./cam'">
     <input type="button" id="settings" value="Settings" onclick="document.location.href='./settings'">
     <br>
     <p id="countdown" ${hideableObj}></p>
@@ -349,6 +350,16 @@ app.get('/stop', function (req, res) {
 
 // -- Force Start Page --
 app.get('/force', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     if (systemActive) {
         if (!cancelled) {
             alarmRunning = true;
@@ -462,6 +473,16 @@ app.get('/settings', function (req, res) {
 
 // -- Settings Toggle --
 app.get('/settings/toggle', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     if (req.query.which) {
         settings[req.query.which].value = !settings[req.query.which].value;
     }
@@ -472,6 +493,16 @@ app.get('/settings/toggle', function (req, res) {
 
 // -- Test Sound Page --
 app.get('/test', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     log('Sound Test Initialized');
     exec(`sudo omxplayer ${rootDir}/alarm_sfx.mp3 --vol 100`, (err, stdout, stderr) => {
         if (err) {
@@ -485,12 +516,32 @@ app.get('/test', function (req, res) {
 
 // -- Set Cancelled pages --
 app.get('/cancel/true', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     cancelled = true;
     log('Next Alarm Was Cancelled!');
     res.send('<script>document.location.href="/cancel"</script>');
 });
 
 app.get('/cancel/false', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     cancelled = false;
     log('Next Alarm Was Uncancelled!');
     res.send('<script>document.location.href="/cancel"</script>');
@@ -498,6 +549,16 @@ app.get('/cancel/false', function (req, res) {
 
 // Toggle System
 app.get('/toggle', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     if (systemActive) {
         systemActive = false;
         log('Alarm System Turned Off');
@@ -510,6 +571,16 @@ app.get('/toggle', function (req, res) {
 
 // Toggle Debug
 app.get('/debug', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     if (debugMode) {
         debugMode = false;
         log('Debug Mode Turned Off');
@@ -677,6 +748,15 @@ app.get('/modify', function (req, res) {
 // Modify GO page
 app.get('/modify/go', function (req, res) {
 
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     queryParams = req.query;
 
     dotw = Number(queryParams.dotw);
@@ -697,6 +777,16 @@ app.get('/modify/go', function (req, res) {
 
 // Modify reset page
 app.get('/modify/reset', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     alarmData = JSON.parse(JSON.stringify(origAlarmData));
     for (var i=0;i<modifiedData.length;i++) {
         modifiedData[i] = [false,0];
@@ -706,6 +796,16 @@ app.get('/modify/reset', function (req, res) {
 
 // Force Picture Take page
 app.get('/cam/force', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     takePicture(true);
     res.send(`
     <p>Please wait</p>
@@ -722,12 +822,25 @@ app.use('/storage', express.static('public'))
 
 // Camera Page
 app.get('/cam', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
     res.send(`
     <head><title>Alarm System</title></head>
 
 
     <img id='img'></img>
-    <script>;
+
+    <input type="button" id="forcePicture" value="Take Picture" onclick="document.location.href='./cam/force'">
+
+    <script>
         function updateCam() {
             camImg = document.getElementById('img');
             d = new Date();
@@ -741,11 +854,23 @@ app.get('/cam', function (req, res) {
     `);
 });
 
+// No Access Page
+
+app.get('/noAccess', function (req, res) {
+
+    res.send(`
+    <head><title>Alarm System</title></head>
+
+    <h1>No Access!</h1>
+    <p>The USB dongle must be plugged in to access this.</p>
+    <input type='button' value='Back' onclick='document.location.href="../"'>
+    `);
+});
+
 // -- MAIN LOOP --
 function run() {
     // take picture
     takePicture(false);
-
 
     if (debugMode && settings.debugLogTime.value) {
         // will only happen if debug is toggled on and setting is on
@@ -894,39 +1019,42 @@ function takePicture(ignoreConditions) {
             var camResolution = [170,60];
                 // vertical offset;
                 var camOffset = 0;
-                inkjet.decode(fs.readFileSync(`public/cam_${photoID}.jpg`), (err, decoded) => {
-                    if (!err) {
-                        camData = Array.from(decoded.data);
-                        if (camOffset > 0) {
-                            camData.splice(0,(camOffset*camResolution[0]*4)-1);
-                        }
-        
-                        if (previousData.length > 1) {
-                            camDiff = 0;
-                            for (var i=0;i<camData.length-3;i += 4) {
-                                currentTotal = camData[i] + camData[i+1] + camData[i+3];
-                                previousTotal = previousData[i] + previousData[i+1] + previousData[i+3];
-                                camDiff += Math.abs(previousTotal - currentTotal);
-                            }
+                if (fs.existsSync(`public/cam_${photoID}.jpg`)) {
 
-                            if (camDiff >= camThreshold) {
-                                if (alarmRunning) {
-                                    log("Alarm stopped due to webcam trigger!");
-                                    alarmRunning = false;
-                                    if (settings.soundOn.value) {
-                                        setTimeout(runTTS,soundLength);
+                    inkjet.decode(fs.readFileSync(`public/cam_${photoID}.jpg`), (err, decoded) => {
+                        if (!err) {
+                            camData = Array.from(decoded.data);
+                            if (camOffset > 0) {
+                                camData.splice(0,(camOffset*camResolution[0]*4)-1);
+                            }
+        
+                            if (previousData.length > 1) {
+                                camDiff = 0;
+                                for (var i=0;i<camData.length-3;i += 4) {
+                                    currentTotal = camData[i] + camData[i+1] + camData[i+3];
+                                    previousTotal = previousData[i] + previousData[i+1] + previousData[i+3];
+                                    camDiff += Math.abs(previousTotal - currentTotal);
+                                }
+
+                                if (camDiff >= camThreshold) {
+                                    if (alarmRunning) {
+                                        log("Alarm stopped due to webcam trigger!");
+                                        alarmRunning = false;
+                                        if (settings.soundOn.value) {
+                                            setTimeout(runTTS,soundLength);
+                                        }
+                                    } else {
+                                        log("Webcam trigger activated, but alarm was already stopped.");                             
                                     }
-                                } else {
-                                    log("Webcam trigger activated, but alarm was already stopped.");                             
+                                }
+                                if (debugMode) {
+                                    console.log("Webcam Diff: " + camDiff);
                                 }
                             }
-                            if (debugMode) {
-                                console.log("Webcam Diff: " + camDiff);
-                            }
+                            previousData = JSON.parse(JSON.stringify(camData));
                         }
-                        previousData = JSON.parse(JSON.stringify(camData));
-                    }
-                });
+                    });
+                }
         });
     } else {
         return false;
@@ -1010,4 +1138,19 @@ function getNextAlarm() {
     cancelledDOTW: cancelledDOTW,
     tempToday: tempToday
    }
+}
+
+function hasAccess() {
+
+    if (usesDongle) {
+        // make sure usb is mounted
+        exec('sudo mount -a', (err, stderr, stdout) => {
+            if (err) {
+                //console.log(err);
+            }
+        });
+
+        return fs.existsSync('/mnt/dongle/access.txt');
+    }
+    return true;
 }
