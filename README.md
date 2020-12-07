@@ -10,6 +10,8 @@ Dependencies:
 * [InkJet](https://www.npmjs.com/package/inkjet) (Optional for webcam feature)
 * [fswebcam](https://github.com/fsphil/fswebcam) (Optional for webcam feature)
 
+You can optionally attach it to IFTT to turn on a lamp using a smart plug which will turn back off after a certain amount of time after the alarm has stopped.
+
 Important:
 
 You need to create a service on IBM Watson Cloud for Text to Speech and enter the details in the .env file in the root.
