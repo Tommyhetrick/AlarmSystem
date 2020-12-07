@@ -1,4 +1,4 @@
-// Alarm Script
+// Alarm Script By Tom Hetrick Jr.
 const fs = require('fs');
 const express = require('express');
 const { exec } = require('child_process');
@@ -11,7 +11,9 @@ const rootDir = "/home/pi/alarm";
 var alarmRunning = false;
 var systemActive = true;
 var debugMode = false;
-var usesDongle = true;
+const usesDongle = true;
+const useIFTTT = true;
+const plugWait = 60;
 const useWebcam = true;
 const port = 80;
 const soundLength = 3;
@@ -89,8 +91,67 @@ const eventData = [
         year: 2020,
         month: "September",
         day: 20
+    },
+    {
+        desc: "Today is your birthday!",
+        month: "March",
+        day: 13
+    },
+    {
+        desc: "Today is Charlie's Birthday",
+        month: "September",
+        day: 4
+    },
+    {
+        desc: "Today is Cooper's Birthday",
+        month: "Febuary",
+        day: 2
+    },
+    {
+        desc: "We brought Charlie home",
+        month: "November",
+        day: 17
+    },
+    {
+        desc: "Today is Mark and Ty's birthday",
+        month: "August",
+        day: 5
+    },
+    {
+        desc: "Today is Mom's birthday",
+        month: "May",
+        day: 10
+    }, 
+    {
+        desc: "Today is Dad's birthday",
+        month: "December",
+        day: 26
+    },
+    {
+        desc: "Today is Julia's birthday",
+        month: "August",
+        day: 8    
+    },
+    {
+        desc: "Today is Amanda's birthday",
+        month: "January",
+        day: 8
+    },
+    {
+        desc: "Today is christmas",
+        month: "December",
+        day: 25   
+    },
+    {
+        desc: "Today is halloween",
+        month: "October",
+        day: 31   
+    },
+    {
+        desc: "Today is christmas",
+        month: "December",
+        day: 25   
     }
-// rest were redacted :)
 ];
 
 // -- Script start --
@@ -317,6 +378,7 @@ app.get('/', function (req, res) {
 app.get('/stop', function (req, res) {
     if (alarmRunning) {
         alarmRunning = false;
+        setTimeout(plugControl,(plugWait*1000),false);
         log('Alarm Was stopped. Starting TTS...');
         res.send(`
         <head><title>Alarm System</title></head>
@@ -363,6 +425,7 @@ app.get('/force', function (req, res) {
     if (systemActive) {
         if (!cancelled) {
             alarmRunning = true;
+            plugControl(true);
             log('Alarm Was Forced to start through webserver');
             res.send(`
             <head><title>Alarm System</title></head>
@@ -885,6 +948,7 @@ function run() {
                 // alarm succesfully went off
                 log('Alarm has gone off!');
                 alarmRunning = true; 
+                plugControl(true);
 
             } else {
                 cancelled = false;
@@ -1153,4 +1217,22 @@ function hasAccess() {
         return fs.existsSync('/mnt/dongle/access.txt');
     }
     return true;
+}
+
+function plugControl(value) {
+    // controls smart plugs using IFTTT
+
+    if (!useIFTTT) {
+        return false;
+    }
+    let webhookNames = ["lampOn","lampOff"];
+
+    let ind = (value) ? 0 : 1
+
+    var cmd = `sudo curl -X POST https://maker.ifttt.com/trigger/${webhookNames[ind]}/with/key/${process.env.IFTTT_TOKEN}`;
+    exec(cmd, (err, stdout, stderr) => {
+        if (err) {
+            console.log(err);
+        }
+    });
 }
