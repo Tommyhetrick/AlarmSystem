@@ -4,7 +4,7 @@ DIY Morning Alarm on a Raspberry Pi using nodeJS
 This program plays a alarm at a set time each day of the week through my speakers.
 When the alarm is stopped, it uses IBM Watson Text to Speech to say what day it is and will tell you events that you specify.
 
-** Dependencies: **
+**Dependencies:**
 * [Express](https://expressjs.com)
 * [dotenv](https://github.com/motdotla/dotenv)
 * [InkJet](https://www.npmjs.com/package/inkjet) (Optional for webcam feature)
@@ -12,7 +12,7 @@ When the alarm is stopped, it uses IBM Watson Text to Speech to say what day it 
 
 You can optionally attach it to IFTT to turn on a lamp using a smart plug which will turn back off after a certain amount of time after the alarm has stopped.
 
-** Important: **
+**Important:**
 
 You need to create a service on IBM Watson Cloud for Text to Speech and enter the details in the .env file in the root.
 alarn_sfx.mp3 must exist in the root directory.
