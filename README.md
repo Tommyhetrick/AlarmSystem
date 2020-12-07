@@ -14,6 +14,9 @@ When the alarm is stopped, it uses IBM Watson Text to Speech to say what day it 
 You can optionally attach the alarm to IFTT to turn on a lamp using a smart plug which will turn back off after a certain amount of time after the alarm has stopped.
 In order to do this, create a webhook trigger in IFTT and change the names in the plugControl function (and make sure useIFTTT is set to true) You must provide your IFTT webhook token in your .env file
 
+**Security USB**
+If you set usesDongle to true, pages that will have changes or security concerns like modify, settings, camera, etc. will be denied access to the user if a USB with a file named access.txt does not exist on a USB. (For this feature you must edit /etc/fstab to automount your USB. Mount it on /mnt/dongle. This will allow mount -a used in the script to mount the USB every time it is checked.
+
 **Important:**
 
 You need to create a service on IBM Watson Cloud for Text to Speech and enter the details in the .env file in the root.
