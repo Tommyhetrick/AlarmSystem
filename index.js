@@ -1,4 +1,5 @@
-// Alarm Script By Tom Hetrick Jr.
+// Alarm System Script By Tom Hetrick Jr.
+// https://github.com/Tommyhetrick/AlarmSystem
 const fs = require('fs');
 const express = require('express');
 const { exec } = require('child_process');
@@ -17,6 +18,7 @@ const soundLength = 3;
 const camThreshold = 325000;
 const unmodifyDays = 3;
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 var alarmRunning = false;
 var systemActive = true;
 var debugMode = false;
@@ -843,7 +845,7 @@ app.get('/cam', function (req, res) {
     <head><title>Alarm System</title></head>
 
 
-    <img id='img' onerror="document.getElementById('img').outerHTML = '<h2>Photo could not be loaded.</h2><p>The unique ID likely changed since the last photo was taken or a photo has not been taken yet.</p>';"></img>
+    <img id='img' onerror="document.getElementById('img').outerHTML = '<h2>Photo could not be loaded.</h2><p>The unique ID likely changed since the last photo was taken or a photo has not been taken yet. Current ID is ${photoID}</p>';"></img>
     <br><br>
     <input type="button" id="forcePicture" value="Take Picture" onclick="document.location.href='./cam/force'">
     <input type="button" id="newID" value="Generate New ID" onclick="document.location.href='./cam/newID'">
