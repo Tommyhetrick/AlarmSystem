@@ -8,9 +8,6 @@ const { stderr, stdout } = require('process');
 require('dotenv').config();
 const app = express();
 const rootDir = "/home/pi/alarm";
-var alarmRunning = false;
-var systemActive = true;
-var debugMode = false;
 const usesDongle = true;
 const useIFTTT = true;
 const plugWait = 60;
@@ -18,11 +15,16 @@ const useWebcam = true;
 const port = 80;
 const soundLength = 3;
 const camThreshold = 325000;
+const unmodifyDays = 3;
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+var alarmRunning = false;
+var systemActive = true;
+var debugMode = false;
 var previousData = [];
 var cancelled = false;
-var unmodifyDays = 3;
 var photoID = '';
+var photoIDTimer = 0;
+var webcamCooldown = 0;
 var modifiedData = [
     [false,0],
     [false,0],
@@ -367,6 +369,7 @@ app.get('/force', function (req, res) {
         if (!cancelled) {
             alarmRunning = true;
             plugControl(true);
+            webcamCooldown = 3;
             log('Alarm Was Forced to start through webserver');
             res.send(`
             <head><title>Alarm System</title></head>
@@ -840,16 +843,18 @@ app.get('/cam', function (req, res) {
     <head><title>Alarm System</title></head>
 
 
-    <img id='img'></img>
-
+    <img id='img' onerror="document.getElementById('img').outerHTML = '<h2>Photo could not be loaded.</h2><p>The unique ID likely changed since the last photo was taken or a photo has not been taken yet.</p>';"></img>
+    <br><br>
     <input type="button" id="forcePicture" value="Take Picture" onclick="document.location.href='./cam/force'">
-
+    <input type="button" id="newID" value="Generate New ID" onclick="document.location.href='./cam/newID'">
+    <br><br>
+    <input id="backBtn" type="button" value="Back" onclick="document.location.href = '../'">
     <script>
         function updateCam() {
             camImg = document.getElementById('img');
             d = new Date();
             camImg.src = "../storage/cam_${photoID}.jpg?ts="+ Date.now();
-            //setTimeout(updateCam,1500);
+            setTimeout(updateCam,1500);
         }
 
         updateCam();
@@ -858,6 +863,28 @@ app.get('/cam', function (req, res) {
     `);
 });
 
+// Generate New ID Page
+app.get('/cam/newID', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
+    setNewPhotoID();
+    res.send(`
+    <p>Please wait. (Generating New ID)</p>
+    <script>
+        setTimeout(() => {
+            document.location.href = "../cam";
+        },1000);
+    </script>
+    `);
+});
 // No Access Page
 
 app.get('/noAccess', function (req, res) {
@@ -871,10 +898,31 @@ app.get('/noAccess', function (req, res) {
     `);
 });
 
-// -- MAIN LOOP --
+// ** -- MAIN LOOP -- **
 function run() {
+
+    // Photo ID Timer
+    photoIDTimer--;
+
+    if (photoIDTimer <= 0) {
+        // generate new ID & reset timer
+        photoIDTimer = 120;
+        setNewPhotoID();
+    }
+
+    if (webcamCooldown > 0) {  
+        webcamCooldown--;   
+    }
+
     // take picture
-    takePicture(false);
+
+    if (useIFTTT) {
+        if (webcamCooldown == 0) {
+            takePicture(false);
+        }
+    } else {
+        takePicture(false);
+    }
 
     if (debugMode && settings.debugLogTime.value) {
         // will only happen if debug is toggled on and setting is on
@@ -889,6 +937,7 @@ function run() {
                 // alarm succesfully went off
                 log('Alarm has gone off!');
                 alarmRunning = true; 
+                webcamCooldown = 3;
                 plugControl(true);
 
             } else {
@@ -1008,17 +1057,6 @@ function modifyAlarm(dotw,h,m) {
 function takePicture(ignoreConditions) {
     if ((useWebcam && alarmRunning) || ignoreConditions) {
 
-        // generate unqiue ID
-
-        photoID = Math.random().toString(36).substr(2, 10);
-
-        // remove previous picture
-        exec(`rm -f public/*.jpg`, (err, stdout, stderr) => {
-            if (err) {
-                console.log(err);
-            }
-        });
-
         // take the picture
         exec(`sudo fswebcam  --no-banner --no-timestamp --crop 170x60,150x100 public/cam_${photoID}.jpg`, (err, stdout, stderr) => {
             var camResolution = [170,60];
@@ -1045,6 +1083,7 @@ function takePicture(ignoreConditions) {
                                     if (alarmRunning) {
                                         log("Alarm stopped due to webcam trigger!");
                                         alarmRunning = false;
+                                        setTimeout(plugControl,(plugWait*1000),false);
                                         if (settings.soundOn.value) {
                                             setTimeout(runTTS,soundLength);
                                         }
@@ -1064,6 +1103,24 @@ function takePicture(ignoreConditions) {
     } else {
         return false;
     }
+}
+
+function plugControl(value) {
+    // controls smart plugs using IFTTT
+
+    if (!useIFTTT) {
+        return false;
+    }
+    let webhookNames = ["lampOn","lampOff"];
+
+    let ind = (value) ? 0 : 1
+
+    var cmd = `sudo curl -X POST https://maker.ifttt.com/trigger/${webhookNames[ind]}/with/key/${process.env.IFTTT_TOKEN}`;
+    exec(cmd, (err, stdout, stderr) => {
+        if (err) {
+            console.log(err);
+        }
+    });
 }
 
 // -- utility functions --
@@ -1160,20 +1217,15 @@ function hasAccess() {
     return true;
 }
 
-function plugControl(value) {
-    // controls smart plugs using IFTTT
+function setNewPhotoID() {
 
-    if (!useIFTTT) {
-        return false;
-    }
-    let webhookNames = ["lampOn","lampOff"];
-
-    let ind = (value) ? 0 : 1
-
-    var cmd = `sudo curl -X POST https://maker.ifttt.com/trigger/${webhookNames[ind]}/with/key/${process.env.IFTTT_TOKEN}`;
-    exec(cmd, (err, stdout, stderr) => {
+    // remove previous picture
+    exec(`rm -f public/*.jpg`, (err, stdout, stderr) => {
         if (err) {
             console.log(err);
         }
     });
+
+    // generate new ID
+    photoID = Math.random().toString(36).substr(2, 10);
 }
