@@ -97,7 +97,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-// the rest were redacted
+// rest were redacted :)
 ];
 
 // -- Script start --
@@ -1061,7 +1061,7 @@ app.get('/storage/archive/viewer', function (req, res) {
         return false;
     }
     res.send(`
-    <img src='${req.query.f}' style="border: black solid 3px;">
+    <img id='img' onerror="document.location.href = '../'" src='${req.query.f}' style="border: black solid 3px;">
     <br>
     <input type='button' value='Back' onclick='document.location.href="../"'>
     `);
