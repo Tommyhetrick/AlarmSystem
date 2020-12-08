@@ -13,6 +13,7 @@ const usesDongle = true;
 const useIFTTT = true;
 const plugWait = 60;
 const useWebcam = true;
+const archiveWebcam = true;
 const port = 80;
 const soundLength = 3;
 const camThreshold = 325000;
@@ -96,7 +97,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-// rest were redacted :)
+// the rest were redacted
 ];
 
 // -- Script start --
@@ -324,6 +325,7 @@ app.get('/stop', function (req, res) {
     if (alarmRunning) {
         alarmRunning = false;
         setTimeout(plugControl,(plugWait*1000),false);
+        archiveCam();
         log('Alarm Was stopped. Starting TTS...');
         res.send(`
         <head><title>Alarm System</title></head>
@@ -845,7 +847,7 @@ app.get('/cam', function (req, res) {
     <head><title>Alarm System</title></head>
 
 
-    <img id='img' onerror="document.getElementById('img').outerHTML = '<h2>Photo could not be loaded.</h2><p>The unique ID likely changed since the last photo was taken or a photo has not been taken yet. Current ID is ${photoID}</p>';"></img>
+    <img id='img' onerror="document.getElementById('img').outerHTML = '<h2>Photo could not be loaded.</h2><p>The unique ID likely changed since the last photo was taken, a photo has not been taken yet, or the alarm is stopped and the photo was archived. Current ID is ${photoID}</p>';"></img>
     <br><br>
     <input type="button" id="forcePicture" value="Take Picture" onclick="document.location.href='./cam/force'">
     <input type="button" id="newID" value="Generate New ID" onclick="document.location.href='./cam/newID'">
@@ -887,6 +889,184 @@ app.get('/cam/newID', function (req, res) {
     </script>
     `);
 });
+
+// Archive Page
+app.get('/storage/archive', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
+    if (!archiveWebcam) {
+        res.send(`
+        <script>
+            document.location.href = '../../';
+        </script>
+        `);
+        return false;
+    }
+
+    injectString = "";
+    filterString = "";
+    archFiles = [];
+    possibleYears = [];
+    possibleMonths = [];
+    possibleDays = [];
+    req.queryParams
+    fs.readdirSync("public/archive").forEach(file => {
+        archFiles.push(file);
+      });
+
+    archFiles.forEach((file) => {
+        datePart = file.split('camarch_')[1].split("_")[0].substr(0,6);
+        monthPart = datePart.substr(0,2);
+        dayPart = datePart.substr(2,2);
+        yearPart = datePart.substr(4,2);
+        if (possibleYears.indexOf(yearPart) == -1) {
+            possibleYears.push(yearPart);
+        }
+        if (possibleMonths.indexOf(monthPart) == -1) {
+            possibleMonths.push(monthPart);
+        }
+        if (possibleDays.indexOf(dayPart) == -1) {
+            possibleDays.push(dayPart);
+        }
+
+        passFilters = true;
+
+        if (req.query.y) {
+            if (req.query.y != yearPart) {
+                passFilters = false;
+            }
+        }
+
+        if (req.query.m) {
+            if (req.query.m != monthPart) {
+                passFilters = false;
+            }
+        }
+
+        if (req.query.d) {
+            if (req.query.d != dayPart) {
+                passFilters = false;
+            }
+        }
+
+        if (passFilters) {
+            injectString += `<a href='./viewer?f=${file}'>${file}</a><br>`;
+        }
+    });
+
+    currentAnchor = "";
+    gotAnchors = Object.keys(req.query);
+
+    for (var i=0;i<gotAnchors.length;i++) {
+        currentAnchor += ((i > 0) ? "&" : "?") + gotAnchors[i] + "=" + req.query[gotAnchors[i]];
+    }
+
+    anchorSymbol = "";
+
+    if (gotAnchors.length == 0) {
+        anchorSymbol = "?";
+    } else {
+        anchorSymbol = "&";       
+    }
+
+    if (gotAnchors.length > 0) {
+        filterDescription = "<h3>Current Filters:</h3>";
+
+        if (req.query.y) {
+            filterDescription += `Year: ${req.query.y}<br><br>`;
+        }
+        if (req.query.m) {
+            filterDescription += `Month: ${req.query.m}<br><br>`;
+        }
+        if (req.query.d) {
+            filterDescription += `Day: ${req.query.d}<br><br>`;
+        }
+
+        filterDescription += `<input type="button" value="Clear Filters" onclick="document.location.href = '.?'"><br>`;
+
+    } else {
+        filterDescription = "";
+    }
+    if (!req.query.y) {
+        filterString += "<h3>Filter Year:</h3>";
+        possibleYears.forEach((year) => {
+            filterString += `<a href='./${currentAnchor}${anchorSymbol}y=${year}'>${year}  </a>`;
+        });
+        filterString += "<br>";
+    }
+    if (!req.query.m) {
+        filterString += "<h3>Filter Month:</h3>";
+        possibleMonths.forEach((month) => {
+            filterString += `<a href='./${currentAnchor}${anchorSymbol}m=${month}'>${month}  </a>`;
+        }); 
+        filterString += "<br>";
+    }
+
+    if (!req.query.d) {
+        filterString += "<h3>Filter Day:</h3>";
+        possibleDays.forEach((day) => {
+            filterString += `<a href='./${currentAnchor}${anchorSymbol}d=${day}'>${day}  </a>`;
+        }); 
+    }
+
+    res.send(`
+    <head><title>Alarm System</title></head>
+
+    <h1>Archive</h1>
+    ${filterDescription}
+    ${filterString}
+    <br>
+    <h3>Files</h3>
+    ${injectString}
+    <br><br><br>
+    <input type='button' value='Back' onclick='document.location.href="../../"'>
+    `);
+});
+
+// Generate New ID Page
+app.get('/storage/archive/viewer', function (req, res) {
+
+    if (!hasAccess()) {
+        res.send(`
+        <script>
+            document.location.href = '../../../noAccess';
+        </script>
+        `);
+        return false;
+    }
+
+    if (!archiveWebcam) {
+        res.send(`
+        <script>
+            document.location.href = '../../../';
+        </script>
+        `);
+        return false;
+    }
+
+    if (!req.query.f) {
+        res.send(`
+        <script>
+            document.location.href = '../';
+        </script>
+        `);
+        return false;
+    }
+    res.send(`
+    <img src='${req.query.f}' style="border: black solid 3px;">
+    <br>
+    <input type='button' value='Back' onclick='document.location.href="../"'>
+    `);
+});
+
 // No Access Page
 
 app.get('/noAccess', function (req, res) {
@@ -1083,9 +1263,11 @@ function takePicture(ignoreConditions) {
 
                                 if (camDiff >= camThreshold) {
                                     if (alarmRunning) {
+                                        // Alarm has been stopped due to webcam
                                         log("Alarm stopped due to webcam trigger!");
                                         alarmRunning = false;
                                         setTimeout(plugControl,(plugWait*1000),false);
+                                        archiveCam();
                                         if (settings.soundOn.value) {
                                             setTimeout(runTTS,soundLength);
                                         }
@@ -1119,6 +1301,21 @@ function plugControl(value) {
 
     var cmd = `sudo curl -X POST https://maker.ifttt.com/trigger/${webhookNames[ind]}/with/key/${process.env.IFTTT_TOKEN}`;
     exec(cmd, (err, stdout, stderr) => {
+        if (err) {
+            console.log(err);
+        }
+    });
+}
+
+function archiveCam() {
+
+    if (!archiveWebcam || !useWebcam) {
+        return false;
+    }
+
+    let d = new Date();
+    fileExt = formatDNum(d.getMonth()+1) + formatDNum(d.getDate()) + formatDNum(d.getFullYear().toString().substr(2,2)) + formatDNum(d.getHours()) + formatDNum(d.getMinutes()) + "_" + Math.random().toString(36).substr(2, 6);
+    exec(`mv public/cam_${photoID}.jpg public/archive/camarch_${fileExt}.jpg`, (err, stdout, stderr) => {
         if (err) {
             console.log(err);
         }
