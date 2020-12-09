@@ -927,13 +927,18 @@ app.get('/storage/archive', function (req, res) {
         monthPart = datePart.substr(0,2);
         dayPart = datePart.substr(2,2);
         yearPart = datePart.substr(4,2);
-        if (possibleYears.indexOf(yearPart) == -1) {
+
+        yearQuery = (req.query.y == yearPart || !req.query.y);
+        monthQuery = (req.query.m == monthPart || !req.query.m);
+        dayQuery = (req.query.d == dayPart || !req.query.d);
+
+        if (possibleYears.indexOf(yearPart) == -1 && monthQuery && dayQuery) {
             possibleYears.push(yearPart);
         }
-        if (possibleMonths.indexOf(monthPart) == -1) {
+        if (possibleMonths.indexOf(monthPart) == -1 && yearQuery && dayQuery) {
             possibleMonths.push(monthPart);
         }
-        if (possibleDays.indexOf(dayPart) == -1) {
+        if (possibleDays.indexOf(dayPart) == -1 && yearQuery && monthQuery) {
             possibleDays.push(dayPart);
         }
 
@@ -956,9 +961,19 @@ app.get('/storage/archive', function (req, res) {
                 passFilters = false;
             }
         }
+        sendParams = "";
+        if (req.query.y) {
+            sendParams += "&y=" + req.query.y;
+        }
+        if (req.query.m) {
+            sendParams += "&m=" + req.query.m;
+        }
+        if (req.query.d) {
+            sendParams += "&d=" + req.query.d;
+        }
 
         if (passFilters) {
-            injectString += `<a href='./viewer?f=${file}'>${file}</a><br>`;
+            injectString += `<a href='./viewer?f=${file}${sendParams}'>${file}</a><br>`;
         }
     });
 
@@ -998,14 +1013,14 @@ app.get('/storage/archive', function (req, res) {
     if (!req.query.y) {
         filterString += "<h3>Filter Year:</h3>";
         possibleYears.forEach((year) => {
-            filterString += `<a href='./${currentAnchor}${anchorSymbol}y=${year}'>${year}  </a>`;
+            filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}y=${year}'>${year}  </a>`;
         });
         filterString += "<br>";
     }
     if (!req.query.m) {
         filterString += "<h3>Filter Month:</h3>";
         possibleMonths.forEach((month) => {
-            filterString += `<a href='./${currentAnchor}${anchorSymbol}m=${month}'>${month}  </a>`;
+            filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}m=${month}'>${month}  </a>`;
         }); 
         filterString += "<br>";
     }
@@ -1013,7 +1028,7 @@ app.get('/storage/archive', function (req, res) {
     if (!req.query.d) {
         filterString += "<h3>Filter Day:</h3>";
         possibleDays.forEach((day) => {
-            filterString += `<a href='./${currentAnchor}${anchorSymbol}d=${day}'>${day}  </a>`;
+            filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}d=${day}'>${day}  </a>`;
         }); 
     }
 
@@ -1028,6 +1043,13 @@ app.get('/storage/archive', function (req, res) {
     ${injectString}
     <br><br><br>
     <input type='button' value='Back' onclick='document.location.href="../../"'>
+
+    <style>
+    
+        a {
+            text-decoration: none;
+        }
+    </style>
     `);
 });
 
@@ -1060,10 +1082,24 @@ app.get('/storage/archive/viewer', function (req, res) {
         `);
         return false;
     }
+
+    backAnchors = "";
+
+    if (req.query.y) {
+        backAnchors += "&y=" + req.query.y;
+    }
+    if (req.query.m) {
+        backAnchors += "&m=" + req.query.m;
+    }
+    if (req.query.d) {
+        backAnchors += "&d=" + req.query.d;
+    }
     res.send(`
+    <head><title>Alarm System</title></head>
+
     <img id='img' onerror="document.location.href = '../'" src='${req.query.f}' style="border: black solid 3px;">
     <br>
-    <input type='button' value='Back' onclick='document.location.href="../"'>
+    <input type='button' value='Back' onclick='document.location.href="./?${backAnchors}"'>
     `);
 });
 
