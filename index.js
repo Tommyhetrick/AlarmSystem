@@ -852,6 +852,7 @@ app.get('/cam', function (req, res) {
     <br><br>
     <input type="button" id="forcePicture" value="Take Picture" onclick="document.location.href='./cam/force'">
     <input type="button" id="newID" value="Generate New ID" onclick="document.location.href='./cam/newID'">
+    <input type="button" id="archive" value="Archive" onclick="document.location.href='./storage/archive'">
     <br><br>
     <input id="backBtn" type="button" value="Back" onclick="document.location.href = '../'">
     <script>
@@ -993,14 +994,16 @@ app.get('/storage/archive', function (req, res) {
         anchorSymbol = "&";       
     }
 
+    let monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
     if (gotAnchors.length > 0) {
         filterDescription = "<h3>Current Filters:</h3>";
 
         if (req.query.y) {
-            filterDescription += `Year: ${req.query.y}<br><br>`;
+            filterDescription += `Year: ${"20" + req.query.y}<br><br>`;
         }
         if (req.query.m) {
-            filterDescription += `Month: ${req.query.m}<br><br>`;
+            filterDescription += `Month: ${monthNames[Number(req.query.m)-1]}<br><br>`;
         }
         if (req.query.d) {
             filterDescription += `Day: ${req.query.d}<br><br>`;
@@ -1014,14 +1017,14 @@ app.get('/storage/archive', function (req, res) {
     if (!req.query.y) {
         filterString += "<h3>Filter Year:</h3>";
         possibleYears.forEach((year) => {
-            filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}y=${year}'>${year}  </a>`;
+            filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}y=${year}'>${"20" + year}  </a>`;
         });
         filterString += "<br>";
     }
     if (!req.query.m) {
         filterString += "<h3>Filter Month:</h3>";
         possibleMonths.forEach((month) => {
-            filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}m=${month}'>${month}  </a>`;
+            filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}m=${month}'>${monthNames[Number(month)-1]}  </a>`;
         }); 
         filterString += "<br>";
     }
