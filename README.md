@@ -10,6 +10,9 @@ When the alarm is stopped, it uses IBM Watson Text to Speech to say what day it 
 * [InkJet](https://www.npmjs.com/package/inkjet) (Optional for webcam feature)
 * [fswebcam](https://github.com/fsphil/fswebcam) (Optional for webcam feature)
 
+**Webcam**
+Optionally, you can plug a usb webcam into your pi which will take a picture every second and compare changes. If the changes are enough, the alarm will tur off.
+You must set the cropping of the picture in takePicture() and the threshold value. This will enable /cam and /storage/archive if that is enabled as well. This feature can be turned on with the useWebcam variable.
 **IFTT**
 You can optionally attach the alarm to IFTT to turn on a lamp using a smart plug which will turn back off after a certain amount of time after the alarm has stopped.
 In order to do this, create a webhook trigger in IFTT and change the names in the plugControl function (and make sure useIFTTT is set to true) You must provide your IFTT webhook token in your .env file
