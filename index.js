@@ -183,6 +183,7 @@ app.get('/', function (req, res) {
     res.send(`
     <head>
     <title>Alarm System</title>
+    <link rel='shortcut icon' type='image/x-icon' href='/storage/fav.ico' />
     </head>
     <h1>${activeText}</h1>
     <br>
@@ -1039,13 +1040,15 @@ app.get('/storage/archive', function (req, res) {
     ${filterDescription}
     ${filterString}
     <br>
-    <h3>Files</h3>
+    <h2>Files</h2>
     ${injectString}
     <br><br><br>
-    <input type='button' value='Back' onclick='document.location.href="../../"'>
+    <input type='button' value='Back' onclick='document.location.href="../../"' style='width:10%;height:5%'>
 
     <style>
-    
+        * {
+            text-align: center;
+        }
         a {
             text-decoration: none;
         }
@@ -1100,6 +1103,12 @@ app.get('/storage/archive/viewer', function (req, res) {
     <img id='img' onerror="document.location.href = '../'" src='${req.query.f}' style="border: black solid 3px;">
     <br>
     <input type='button' value='Back' onclick='document.location.href="./?${backAnchors}"'>
+
+    <style>
+    * {
+        text-align: center;
+    }
+    </style>
     `);
 });
 
