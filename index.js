@@ -6,6 +6,7 @@ const { exec } = require('child_process');
 const { SSL_OP_TLS_BLOCK_PADDING_BUG } = require('constants');
 const inkjet = require('inkjet');
 const { stderr, stdout } = require('process');
+const { format } = require('path');
 require('dotenv').config();
 const app = express();
 const rootDir = "/home/pi/alarm";
@@ -45,6 +46,10 @@ var settings = {
     soundOn: {
         value: true,
         label: "Sound On"
+    },
+    archiveFilterDisplay: {
+        value: false,
+        label: "Simplified Archive Filter Display"
     }
 };
 
@@ -926,7 +931,7 @@ app.get('/storage/archive', function (req, res) {
     req.queryParams
     fs.readdirSync("public/archive").forEach(file => {
         archFiles.push(file);
-      });
+    });
 
     archFiles.forEach((file) => {
         datePart = file.split('camarch_')[1].split("_")[0].substr(0,6);
@@ -999,7 +1004,7 @@ app.get('/storage/archive', function (req, res) {
     }
 
     let monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-
+    let monthLengths = [31,28,31,30,31,30,31,31,30,31,30,31];
     if (gotAnchors.length > 0) {
         filterDescription = "<h3>Current Filters:</h3>";
 
@@ -1027,17 +1032,63 @@ app.get('/storage/archive', function (req, res) {
     }
     if (!req.query.m) {
         filterString += "<h3>Filter Month:</h3>";
-        possibleMonths.forEach((month) => {
-            filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}m=${month}'>${monthNames[Number(month)-1]}  </a>`;
-        }); 
+        if (!settings.archiveFilterDisplay.value) {
+            // shows all months, but only adds a link for the selected filter
+            for (var i=0;i<12;i++) {
+                if (possibleMonths.indexOf(formatDNum(i+1)) > -1) {
+                    filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}m=${formatDNum(i+1)}'>${monthNames[i]}  </a>`;
+                } else {
+                    filterString += `<a id='filterNone'>${monthNames[i]}  </a>`;                   
+                }
+            }
+        } else {
+            // show only selected month filter
+            possibleMonths.forEach((month) => {
+                filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}m=${month}'>${monthNames[Number(month)-1]}  </a>`;
+            }); 
+        }
         filterString += "<br>";
     }
 
     if (!req.query.d) {
         filterString += "<h3>Filter Day:</h3>";
-        possibleDays.forEach((day) => {
-            filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}d=${day}'>${day}  </a>`;
-        }); 
+        if (!settings.archiveFilterDisplay.value) {
+            // shows all days, but only adds a link for the selected filter 
+            let mLength = 0;
+            if (!req.query.m) {
+                mLength = 31;
+            } else {
+                // if month is selected, figure out how many days is in that month
+                mLength = monthLengths[Number(req.query.m)-1];
+
+                // if year is selected, check for leap year (to add a day if febuary)
+                if (req.query.y) {
+                    if ((Number(req.query.y) & 3) == 0 && ((Number(req.query.y)  % 25) != 0 || ((Number(req.query.y)  & 15) == 0)) && (Number(req.query.m)  == "2")) {
+                        mLength = 29;
+                    }
+                }
+            }
+
+            for (var i=0;i<mLength;i++) {
+                if (possibleDays.indexOf(formatDNum(i+1)) > -1) {
+                    filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}d=${formatDNum(i+1)}'>${i+1}  </a>`;               
+                } else {
+                    filterString += `<a id='filterNone'>${i+1}  </a>`;            
+                }
+            }
+        } else {
+            // show only selected day filter
+            possibleDays.forEach((day) => {
+                filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}d=${day}'>${day}  </a>`;
+            }); 
+        }
+    }
+
+    if (!(req.query.y && req.query.m && req.query.d)) {
+        // show set filter to today link
+        d = new Date();
+
+        filterString += `<br><br><a href='./?y=${formatDNum(d.getFullYear().toString().substr(2,2))}&m=${formatDNum(d.getMonth()+1)}&d=${formatDNum(d.getDate())}'>Set Filter to Today  </a>`;   
     }
 
     res.send(`
@@ -1050,15 +1101,28 @@ app.get('/storage/archive', function (req, res) {
     <h2>Files</h2>
     ${injectString}
     <br><br><br>
-    <input type='button' value='Back' onclick='document.location.href="../../"' style='width:10%;height:5%'>
+    <input type='button' value='Back' onclick='document.location.href="../../cam"' style='width:10%;height:5%'>
 
     <style>
+
         * {
             text-align: center;
         }
         a {
             text-decoration: none;
+            color: black;
         }
+        a:hover {
+            color: red;
+        }
+        #filterNone {
+            font-size: 7pt;
+            color: rgb(127,127,127);
+        }
+        #filter {
+            color: red;
+        }
+
     </style>
     ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
     `);
