@@ -249,9 +249,6 @@ app.get('/', function (req, res) {
         * {
             text-align: center;
         }
-        body {
-            background-color: ${backgroundClr};
-        }
 	    #stop {
 	        width: 13%;
 	        height: 7%;
@@ -260,6 +257,8 @@ app.get('/', function (req, res) {
 
         ${toggleRestyle}
     </style>
+
+    ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
     
     <script>
 
@@ -338,6 +337,7 @@ app.get('/stop', function (req, res) {
                 document.location.href = "../";
             },2500);
         </script>
+        ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
         `);
         if (settings.soundOn.value) {
             setTimeout(runTTS(),soundLength);
@@ -414,6 +414,7 @@ app.get('/force', function (req, res) {
                 document.location.href = "../";
             },1500);
         </script>
+        ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
         `);
     }
 });
@@ -451,6 +452,7 @@ app.get('/cancel', function (req, res) {
         <br>
         <h2>Status: ${cancelledString}<h2> <input id="cancelBtn" type="button" value="${buttonText}" onclick="document.location.href='${buttonLink}'"><br><br>
         <input  id="backBtn" type="button" value="Back" onclick="document.location.href = '../'">
+        ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
     `);
 });
 
@@ -480,6 +482,7 @@ app.get('/settings', function (req, res) {
         ${pageData}
         <br>
         <input  id="backBtn" type="button" value="Back" onclick="document.location.href = '../'">
+        ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
     `);
 });
 
@@ -754,6 +757,7 @@ app.get('/modify', function (req, res) {
             document.getElementById('ampm').selectedIndex = ${selectedIndex};
             document.getElementById('dotw').selectedIndex = ${nDOTW};
         </script>
+        ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
     `);
 });
 
@@ -865,7 +869,7 @@ app.get('/cam', function (req, res) {
 
         updateCam();
     </script>
-    
+    ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
     `);
 });
 
@@ -1056,6 +1060,7 @@ app.get('/storage/archive', function (req, res) {
             text-decoration: none;
         }
     </style>
+    ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
     `);
 });
 
@@ -1112,6 +1117,7 @@ app.get('/storage/archive/viewer', function (req, res) {
         text-align: center;
     }
     </style>
+    ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
     `);
 });
 
