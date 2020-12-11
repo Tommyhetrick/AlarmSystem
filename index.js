@@ -20,6 +20,18 @@ const soundLength = 3;
 const camThreshold = 325000;
 const unmodifyDays = 3;
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const requiredAccessLevels = {
+    // change required access level (useDongle must be true) Note: upgradeAccess is hardcoded to require lvl 1 for obvious reasons
+    settings: 1,
+    toggle: 1,
+    archive: 2,
+    cam: 1,
+    modify: 1,
+    debug: 1,
+    test: 1,
+    force: 2,
+    cancel: 1
+}
 
 var alarmRunning = false;
 var systemActive = true;
@@ -29,6 +41,8 @@ var cancelled = false;
 var photoID = '';
 var photoIDTimer = 0;
 var webcamCooldown = 0;
+var accessLevel = 0;
+var upgradeAccessCode = "";
 var modifiedData = [
     [false,0],
     [false,0],
@@ -102,7 +116,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-// rest were redacted :)
+// rest were redacted
 ];
 
 // -- Script start --
@@ -366,14 +380,11 @@ app.get('/stop', function (req, res) {
 // -- Force Start Page --
 app.get('/force', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.force) {
+        redirectNoAccess(res,"force");
         return false;
     }
+
 
     if (systemActive) {
         if (!cancelled) {
@@ -486,6 +497,10 @@ app.get('/settings', function (req, res) {
         <br>
         ${pageData}
         <br>
+        <br>
+        <h4>Other Links:<h4>
+        <a href="/upgradeAccess">Upgrade Access</a>
+        <br><br>
         <input  id="backBtn" type="button" value="Back" onclick="document.location.href = '../'">
         ${(systemActive) ? "" : "<style>body {background-color: #FF4C4C;}</style>"}
     `);
@@ -494,14 +509,11 @@ app.get('/settings', function (req, res) {
 // -- Settings Toggle --
 app.get('/settings/toggle', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.settings) {
+        redirectNoAccess(res,"settings");
         return false;
     }
+
 
     if (req.query.which) {
         settings[req.query.which].value = !settings[req.query.which].value;
@@ -514,14 +526,11 @@ app.get('/settings/toggle', function (req, res) {
 // -- Test Sound Page --
 app.get('/test', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.test) {
+        redirectNoAccess(res,"test");
         return false;
     }
+
 
     log('Sound Test Initialized');
     exec(`sudo omxplayer ${rootDir}/alarm_sfx.mp3 --vol 100`, (err, stdout, stderr) => {
@@ -537,14 +546,11 @@ app.get('/test', function (req, res) {
 // -- Set Cancelled pages --
 app.get('/cancel/true', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.cancel) {
+        redirectNoAccess(res,"cancel");
         return false;
     }
+
 
     cancelled = true;
     log('Next Alarm Was Cancelled!');
@@ -553,14 +559,11 @@ app.get('/cancel/true', function (req, res) {
 
 app.get('/cancel/false', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.cancel) {
+        redirectNoAccess(res,"cancel");
         return false;
     }
+
 
     cancelled = false;
     log('Next Alarm Was Uncancelled!');
@@ -570,14 +573,11 @@ app.get('/cancel/false', function (req, res) {
 // Toggle System
 app.get('/toggle', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.toggle) {
+        redirectNoAccess(res,"toggle");
         return false;
     }
+
 
     if (systemActive) {
         systemActive = false;
@@ -592,14 +592,11 @@ app.get('/toggle', function (req, res) {
 // Toggle Debug
 app.get('/debug', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.debug) {
+        redirectNoAccess(res,"debug");
         return false;
     }
+
 
     if (debugMode) {
         debugMode = false;
@@ -769,14 +766,11 @@ app.get('/modify', function (req, res) {
 // Modify GO page
 app.get('/modify/go', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.modify) {
+        redirectNoAccess(res,"modify");
         return false;
     }
+
 
     queryParams = req.query;
 
@@ -799,14 +793,11 @@ app.get('/modify/go', function (req, res) {
 // Modify reset page
 app.get('/modify/reset', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.modify) {
+        redirectNoAccess(res,"modify");
         return false;
     }
+
 
     alarmData = JSON.parse(JSON.stringify(origAlarmData));
     for (var i=0;i<modifiedData.length;i++) {
@@ -818,14 +809,11 @@ app.get('/modify/reset', function (req, res) {
 // Force Picture Take page
 app.get('/cam/force', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.cam) {
+        redirectNoAccess(res,"cam");
         return false;
     }
+
 
     takePicture(true);
     res.send(`
@@ -844,14 +832,11 @@ app.use('/storage', express.static('public'))
 // Camera Page
 app.get('/cam', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.cam) {
+        redirectNoAccess(res,"cam");
         return false;
     }
+
 
     res.send(`
     <head><title>Alarm System</title></head>
@@ -881,14 +866,11 @@ app.get('/cam', function (req, res) {
 // Generate New ID Page
 app.get('/cam/newID', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.cam) {
+        redirectNoAccess(res,"cam");
         return false;
     }
+
 
     setNewPhotoID();
     res.send(`
@@ -904,12 +886,8 @@ app.get('/cam/newID', function (req, res) {
 // Archive Page
 app.get('/storage/archive', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.archive) {
+        redirectNoAccess(res,"archive");
         return false;
     }
 
@@ -1131,12 +1109,8 @@ app.get('/storage/archive', function (req, res) {
 // Generate New ID Page
 app.get('/storage/archive/viewer', function (req, res) {
 
-    if (!hasAccess()) {
-        res.send(`
-        <script>
-            document.location.href = '../../../noAccess';
-        </script>
-        `);
+    if (updateAccessLevel() < requiredAccessLevels.archive) {
+        redirectNoAccess(res,"archive");
         return false;
     }
 
@@ -1188,12 +1162,185 @@ app.get('/storage/archive/viewer', function (req, res) {
 // No Access Page
 
 app.get('/noAccess', function (req, res) {
-
+    neededLevelText = "";
+    if (req.query.p) {
+        if (Object.keys(requiredAccessLevels).indexOf(req.query.p)) {
+            neededLevelText = "It needs to be at least level " + requiredAccessLevels[req.query.p] + " to access it.";
+        }
+    }
     res.send(`
     <head><title>Alarm System</title></head>
 
     <h1>No Access!</h1>
-    <p>The USB dongle must be plugged in to access this.</p>
+    <p>The current access level is not high enough.</p>
+    <p>${neededLevelText}</p>
+    <input type='button' value='Back' onclick='document.location.href="../"'>
+    `);
+});
+
+
+// Upgrade Access Page
+app.get('/upgradeAccess', function (req, res) {
+
+    if (updateAccessLevel() < 1) {
+        redirectNoAccess(res);
+        return false;
+    }
+
+    if (updateAccessLevel() == 2) {
+        res.send(`
+        <head><title>Alarm System</title></head>
+
+        <h1>Upgrade Access Level</h1>
+        <p>Current Level is ${accessLevel}</p>
+        <br>
+        <p>This is the highest access level. Click this button to downgrade to level 1:</p>
+        <input type='button' value='Downgrade' onclick='document.location.href="/upgradeAccess/downgrade"'>
+        <br>
+        <p>You can unplug the USB to go back to level 0 as well.</p>
+        <br><br>
+        <input type='button' value='Back' onclick='document.location.href="../"'>
+
+        <style>
+        * {
+            text-align: center;
+        }
+        </style>
+        `);
+        return true;
+    }
+
+    res.send(`
+    <head><title>Alarm System</title></head>
+
+    <h1>Upgrade Access Level</h1>
+    <p>Current Level is ${accessLevel}</p>
+    <br>
+    <p>Press this button to play the code (This will generate a new code)</p>
+    <input type='button' value='Play' onclick='document.location.href="/upgradeAccess/play"'>
+    <br><br>
+    <input id="code" type='text'>
+    <br>
+    <input type='button' value='Submit' onclick='submit()'>
+    <br><br>
+    <input type='button' value='Back' onclick='document.location.href="../"'>
+
+    <script>
+        function submit() {
+            document.location.href = "/upgradeAccess/submit?c=" + document.getElementById('code').value;
+        }
+    </script>
+
+    <style>
+    * {
+        text-align: center;
+    }
+    </style>
+    `);
+});
+
+// Upgrade Access Play Sound Page
+app.get('/upgradeAccess/play', function (req, res) {
+
+    if (updateAccessLevel() < 1) {
+        redirectNoAccess(res);
+        return false;
+    }
+
+    upgradeAccessCode = Math.random().toString(36).substr(2, 5);
+
+    playLetterSequence(upgradeAccessCode);
+
+    res.send(`
+    <script>
+        document.location.href = './';
+    </script>
+    `);
+});
+
+// Upgrade Access Submit
+app.get('/upgradeAccess/submit', function (req, res) {
+
+    if (updateAccessLevel() < 1) {
+        redirectNoAccess(res);
+        return false;
+    }
+
+    if (req.query.c) {
+        if (req.query.c.toLowerCase() == upgradeAccessCode) {
+            if (accessLevel == 1) {
+                accessLevel = 2;
+            }
+            res.send(`
+            <script>
+            document.location.href = '/upgradeAccess/granted';
+            </script>
+            `);
+        } else {
+            res.send(`
+            <script>
+            document.location.href = '/upgradeAccess/denied';
+            </script>
+            `);
+        }
+    } else {
+        res.send(`
+        <script>
+        document.location.href = '/upgradeAccess/denied';
+        </script>
+        `);
+    }
+});
+
+// Upgrade Access Downgrade
+app.get('/upgradeAccess/downgrade', function (req, res) {
+
+    if (updateAccessLevel() < 2) {
+        redirectNoAccess(res);
+        return false;
+    }
+
+    if (accessLevel == 2) {
+        accessLevel = 1;
+    }
+
+    res.send(`
+    <script>
+        document.location.href = '/upgradeAccess';
+    </script>
+    `);
+});
+
+// Upgrade Access Granted
+app.get('/upgradeAccess/granted', function (req, res) {
+
+    if (updateAccessLevel() < 1) {
+        redirectNoAccess(res);
+        return false;
+    }
+
+    res.send(`
+    <head><title>Alarm System</title></head>
+
+    <h1>Granted!</h1>
+    <p>Access Level has been upgraded to 2.</p>
+    <input type='button' value='Back' onclick='document.location.href="../"'>
+    `);
+});
+
+// Upgrade Access Denied
+app.get('/upgradeAccess/denied', function (req, res) {
+
+    if (updateAccessLevel() < 1) {
+        redirectNoAccess(res);
+        return false;
+    }
+
+    res.send(`
+    <head><title>Alarm System</title></head>
+
+    <h1>Denied!</h1>
+    <p>The Code was incorrect.</p>
     <input type='button' value='Back' onclick='document.location.href="../"'>
     `);
 });
@@ -1440,6 +1587,21 @@ function archiveCam() {
     });
 }
 
+function playLetterSequence(input) {
+    if (debugMode) {
+        log(input);
+    }
+    currChar = input.substr(0,1);
+    exec(`sudo omxplayer ${rootDir}/public/chars/${currChar}.mp3 --vol 10`, (err, stdout, stderr) => {
+        if (err) {
+            //console.error(err)
+        }
+    });
+    if (input.length > 1) {
+        setTimeout(playLetterSequence,1250,input.substr(1));
+    }
+}
+
 // -- utility functions --
 
 function addDays(date, days) {
@@ -1519,7 +1681,7 @@ function getNextAlarm() {
    }
 }
 
-function hasAccess() {
+function updateAccessLevel() {
 
     if (usesDongle) {
         // make sure usb is mounted
@@ -1528,10 +1690,31 @@ function hasAccess() {
                 //console.log(err);
             }
         });
-
-        return fs.existsSync('/mnt/dongle/access.txt');
+        if (fs.existsSync('/mnt/dongle/access.txt')) {
+            if (accessLevel < 1) {
+                accessLevel = 1;
+            }
+        } else {
+            accessLevel = 0;        
+        }
+    } else {
+        accessLevel = 2;
     }
-    return true;
+
+    return accessLevel;
+}
+
+function redirectNoAccess(res,page) {
+    if (page) {
+        pageArgument = "?p=" + page;
+    } else {
+        pageArgument = "";
+    }
+    res.send(`
+    <script>
+    document.location.href = '/noAccess${pageArgument}';
+    </script>
+    `);
 }
 
 function setNewPhotoID() {
