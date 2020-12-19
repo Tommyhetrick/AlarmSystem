@@ -1374,6 +1374,7 @@ app.get('/api', function (req, res) {
     apiResp.cancelled = cancelled;
     apiResp.debugMode = debugMode;
     apiResp.accessLevel = accessLevel;
+    apiResp.nextUnix = getNextAlarm().nAlarmUnix;
     res.end(JSON.stringify(apiResp));
 });
 
