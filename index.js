@@ -116,7 +116,7 @@ const eventData = [
         month: "September",
         day: 20
     }
-// rest were redacted
+// rest were redacted :)
 ];
 
 // -- Script start --
@@ -1343,6 +1343,38 @@ app.get('/upgradeAccess/denied', function (req, res) {
     <p>The Code was incorrect.</p>
     <input type='button' value='Back' onclick='document.location.href="../"'>
     `);
+});
+
+// API
+app.get('/api', function (req, res) {
+
+    apiResp = {};
+
+    // Alarm Data
+    apiAlarmData = {};
+    for (var i=0;i<7;i++) {
+        
+        apiAlarmData[days[i]] = {
+            hours: alarmData[i].hours,
+            minutes: alarmData[i].minutes,
+            modified: modifiedData[i][0]
+        }
+    }
+    // Settings Data
+    apiSettingsData = {};
+    let settingsNames = Object.keys(settings);
+    for (var i=0;i<settingsNames.length;i++) {
+        apiSettingsData[settingsNames[i]] = settings[settingsNames[i]].value;
+    }
+    apiResp.alarms = apiAlarmData;
+    apiResp.settings = apiSettingsData;
+    apiResp.events = eventData;
+    apiResp.alarmRunning = alarmRunning;
+    apiResp.systemActive = systemActive;
+    apiResp.cancelled = cancelled;
+    apiResp.debugMode = debugMode;
+    apiResp.accessLevel = accessLevel;
+    res.end(JSON.stringify(apiResp));
 });
 
 // ** -- MAIN LOOP -- **
