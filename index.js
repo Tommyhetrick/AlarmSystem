@@ -115,8 +115,67 @@ const eventData = [
         year: 2020,
         month: "September",
         day: 20
+    },
+    {
+        desc: "Today is your birthday!",
+        month: "March",
+        day: 13
+    },
+    {
+        desc: "Today is Charlie's Birthday",
+        month: "September",
+        day: 4
+    },
+    {
+        desc: "Today is Cooper's Birthday",
+        month: "Febuary",
+        day: 2
+    },
+    {
+        desc: "We brought Charlie home",
+        month: "November",
+        day: 17
+    },
+    {
+        desc: "Today is Mark and Ty's birthday",
+        month: "August",
+        day: 5
+    },
+    {
+        desc: "Today is Mom's birthday",
+        month: "May",
+        day: 10
+    }, 
+    {
+        desc: "Today is Dad's birthday",
+        month: "December",
+        day: 26
+    },
+    {
+        desc: "Today is Julia's birthday",
+        month: "August",
+        day: 8    
+    },
+    {
+        desc: "Today is Amanda's birthday",
+        month: "January",
+        day: 8
+    },
+    {
+        desc: "Today is christmas",
+        month: "December",
+        day: 25   
+    },
+    {
+        desc: "Today is halloween",
+        month: "October",
+        day: 31   
+    },
+    {
+        desc: "Today is christmas",
+        month: "December",
+        day: 25   
     }
-// rest were redacted :)
 ];
 
 // -- Script start --
@@ -1375,6 +1434,7 @@ app.get('/api', function (req, res) {
     apiResp.debugMode = debugMode;
     apiResp.accessLevel = accessLevel;
     apiResp.nextUnix = getNextAlarm().nAlarmUnix;
+    apiResp.currentUnix = Date.now();
     res.end(JSON.stringify(apiResp));
 });
 
