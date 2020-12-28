@@ -1338,9 +1338,8 @@ app.get('/upgradeAccess/downgrade', function (req, res) {
         return false;
     }
 
-    if (accessLevel == 2) {
-        accessLevel = 1;
-    }
+    log('Access Level downgraded to level 1');
+    accessLevel = 1;
 
     res.send(`
     <script>
