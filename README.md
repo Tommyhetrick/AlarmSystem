@@ -9,6 +9,7 @@ When the alarm is stopped, it uses IBM Watson Text to Speech to say what day it 
 * [dotenv](https://github.com/motdotla/dotenv)
 * [InkJet](https://www.npmjs.com/package/inkjet) (Optional for webcam feature)
 * [fswebcam](https://github.com/fsphil/fswebcam) (Optional for webcam feature)
+* [AlarmSystemAuthenticator](https://github.com/Tommyhetrick/AlarmSystemAuthenticator) (Optional for upgrading access level method 2)
 
 **Webcam**
 Optionally, you can plug a usb webcam into your pi which will take a picture every second and compare changes. If the changes are enough, the alarm will tur off.
@@ -19,7 +20,7 @@ You can optionally attach the alarm to IFTT to turn on a lamp using a smart plug
 In order to do this, create a webhook trigger in IFTT and change the names in the plugControl function (and make sure useIFTTT is set to true) You must provide your IFTT webhook token in your .env file
 
 **Security USB**
-If you set usesDongle to true, pages that will have changes or security concerns like modify, settings, camera, etc. will be denied access to the user if a USB with a file named access.txt does not exist on a USB. (For this feature you must edit /etc/fstab to automount your USB. Mount it on /mnt/dongle. This will allow mount -a used in the script to mount the USB every time it is checked.
+If you set usesDongle to true, pages that will have changes or security concerns like modify, settings, camera, etc. will be denied access to the user if a USB with a file named access.txt does not exist on a USB. (For this feature you must edit /etc/fstab to automount your USB. Mount it on /mnt/dongle. This will allow mount -a used in the script to mount the USB every time it is checked. You can change the access level by going to /upgradeAccess which is linked in settings. 
 
 **Important:**
 
