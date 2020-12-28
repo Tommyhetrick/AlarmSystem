@@ -20,6 +20,10 @@ const soundLength = 3;
 const camThreshold = 325000;
 const unmodifyDays = 3;
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const authenticatorSettings = {
+    IP: "10.0.0.169:3000",
+    timeout: 0.1
+};
 const requiredAccessLevels = {
     // change required access level (useDongle must be true) Note: upgradeAccess is hardcoded to require lvl 1 for obvious reasons
     settings: 1,
@@ -31,7 +35,7 @@ const requiredAccessLevels = {
     test: 1,
     force: 2,
     cancel: 1
-}
+};
 
 var alarmRunning = false;
 var systemActive = true;
@@ -77,27 +81,27 @@ var alarmData = [
     },
     // monday
     {
-        hours: 10,
-        minutes: 15
+        hours: 9,
+        minutes: 0
     },
     // tuesday
     {
-        hours: 6,
-        minutes: 25
+        hours: 9,
+        minutes: 0
     },
     // wednesday
     {
-        hours: 10,
-        minutes: 15
+        hours: 9,
+        minutes: 0
     },
     // thursday
     {
-        hours: 8,
-        minutes: 50
+        hours: 9,
+        minutes: 0
     },
     // friday
     {
-        hours: 11,
+        hours: 9,
         minutes: 0
     },
     // saturday
@@ -116,6 +120,7 @@ const eventData = [
         month: "September",
         day: 20
     }
+// rest were redacted :)
 ];
 
 // -- Script start --
@@ -1215,6 +1220,7 @@ app.get('/upgradeAccess', function (req, res) {
     <h1>Upgrade Access Level</h1>
     <p>Current Level is ${accessLevel}</p>
     <br>
+    <h2>Method 1 (Audio)</h2>
     <p>Press this button to play the code (This will generate a new code)</p>
     <input type='button' value='Play' onclick='document.location.href="/upgradeAccess/play"'>
     <br><br>
@@ -1222,6 +1228,10 @@ app.get('/upgradeAccess', function (req, res) {
     <br>
     <input type='button' value='Submit' onclick='submit()'>
     <br><br>
+    <h2>Method 2 (Authenticator)</h2>   
+    <p>Run the <a href="https://github.com/Tommyhetrick/AlarmSystemAuthenticator">Authenticator</a> program and then press this button:</p>
+    <input type='button' value='Authenticate' onclick='document.location.href="/upgradeAccess/auth"'>
+    <br><br><br>
     <input type='button' value='Back' onclick='document.location.href="../"'>
 
     <script>
@@ -1267,9 +1277,42 @@ app.get('/upgradeAccess/submit', function (req, res) {
 
     if (req.query.c) {
         if (req.query.c.toLowerCase() == upgradeAccessCode) {
-            if (accessLevel == 1) {
-                accessLevel = 2;
-            }
+            accessLevel = 2;
+            log('Access Level upgraded to level 2');
+            res.send(`
+                <script>
+                document.location.href = '/upgradeAccess/granted';
+                </script>
+            `);
+        } else {
+            res.send(`
+            <script>
+            document.location.href = '/upgradeAccess/denied?ctx=audio';
+            </script>
+            `);
+        }
+    } else {
+        res.send(`
+        <script>
+        document.location.href = '/upgradeAccess/denied?ctx=audio';
+        </script>
+        `);
+    }
+});
+
+// Upgrade Access Authenticator Submit
+app.get('/upgradeAccess/auth', function (req, res) {
+
+    if (updateAccessLevel() < 1) {
+        redirectNoAccess(res);
+        return false;
+    }
+
+    exec(`sudo curl -m ${authenticatorSettings.timeout} -X GET ${authenticatorSettings.IP}`, (err, stdout, stderr) => {
+
+        if (stdout == "success") {
+            log('Access Level upgraded to level 2');
+            accessLevel = 2;
             res.send(`
             <script>
             document.location.href = '/upgradeAccess/granted';
@@ -1278,17 +1321,13 @@ app.get('/upgradeAccess/submit', function (req, res) {
         } else {
             res.send(`
             <script>
-            document.location.href = '/upgradeAccess/denied';
+            document.location.href = '/upgradeAccess/denied?ctx=auth';
             </script>
-            `);
+            `);        
         }
-    } else {
-        res.send(`
-        <script>
-        document.location.href = '/upgradeAccess/denied';
-        </script>
-        `);
-    }
+
+        return;
+    });
 });
 
 // Upgrade Access Downgrade
@@ -1323,7 +1362,7 @@ app.get('/upgradeAccess/granted', function (req, res) {
 
     <h1>Granted!</h1>
     <p>Access Level has been upgraded to 2.</p>
-    <input type='button' value='Back' onclick='document.location.href="../"'>
+    <input type='button' value='Back' onclick='document.location.href="./"'>
     `);
 });
 
@@ -1335,13 +1374,30 @@ app.get('/upgradeAccess/denied', function (req, res) {
         return false;
     }
 
-    res.send(`
-    <head><title>Alarm System</title></head>
-
-    <h1>Denied!</h1>
-    <p>The Code was incorrect.</p>
-    <input type='button' value='Back' onclick='document.location.href="../"'>
-    `);
+    if (req.query.ctx == "auth") {
+        res.send(`
+        <head><title>Alarm System</title></head>
+    
+        <h1>Denied!</h1>
+        <p>Did not recieve response from the authenticator</p>
+        <input type='button' value='Back' onclick='document.location.href="./"'>
+        `);   
+    } else if (req.query.ctx == "audio") {
+        res.send(`
+        <head><title>Alarm System</title></head>
+    
+        <h1>Denied!</h1>
+        <p>The Code was incorrect.</p>
+        <input type='button' value='Back' onclick='document.location.href="./"'>
+        `);
+    } else {
+        res.send(`
+        <head><title>Alarm System</title></head>
+    
+        <h1>Denied!</h1>
+        <input type='button' value='Back' onclick='document.location.href="./"'>
+        `);
+    }
 });
 
 // API
@@ -1534,6 +1590,7 @@ function modifyAlarm(dotw,h,m) {
     }
 }
 
+// this is the worst thing I have ever seen:
 function takePicture(ignoreConditions) {
     if ((useWebcam && alarmRunning) || ignoreConditions) {
 
