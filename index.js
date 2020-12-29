@@ -520,7 +520,11 @@ app.get('/settings/toggle', function (req, res) {
 
 
     if (req.query.which) {
-        settings[req.query.which].value = !settings[req.query.which].value;
+
+        // make sure setting exists
+        if (Object.keys(settings).indexOf(req.query.which) > -1) {
+            settings[req.query.which].value = !settings[req.query.which].value;
+        }
     }
     res.send(`
     <script>document.location.href="/settings"</script>
@@ -619,6 +623,12 @@ app.get('/modify', function (req, res) {
     nDOTW = na.tempToday.getDay();
     } else {
         nDOTW = Number(req.query.dotw);
+
+        // make sure dotw parameter is valid, if not, remove parameter
+        if (nDOTW < 0 || nDOTW > 6) {
+            res.send('<script>document.location.href="./modify"</script>');
+            return false;
+        }
     }
     nextData = JSON.parse(JSON.stringify(alarmData[nDOTW])); // this line is the worst thing to ever exist
 
@@ -782,6 +792,13 @@ app.get('/modify/go', function (req, res) {
     hours = Number(queryParams.hours);
     minutes = Number(queryParams.minutes);
     amPm = queryParams.ampm;
+
+    // check for invalid inputs (this looks kind of awful)
+    if (hours < 0 || hours > 12 || minutes < 0 || minutes > 59 || (amPm != "AM" && amPM != "PM") || dotw < 0 || dotw > 6) {
+        res.send('<script>document.location.href="../modify?error"</script>');
+        return false;
+    }
+
     if (amPm == 'PM') {
         if (hours != 12) {
             hours += 12;
