@@ -788,13 +788,18 @@ app.get('/modify/go', function (req, res) {
 
     queryParams = req.query;
 
+    // check all inputs are specified (also kind of awful but I don't feel like making it better)
+    if (Object.keys(queryParams).indexOf('hours') == -1 || Object.keys(queryParams).indexOf('minutes') == -1 || Object.keys(queryParams).indexOf('ampm') == -1 || Object.keys(queryParams).indexOf('dotw') == -1) {
+            res.send('<script>document.location.href="../modify?missingparams"</script>');
+            return false;
+    }
     dotw = Number(queryParams.dotw);
     hours = Number(queryParams.hours);
     minutes = Number(queryParams.minutes);
     amPm = queryParams.ampm;
 
     // check for invalid inputs (this looks kind of awful)
-    if (hours < 0 || hours > 12 || minutes < 0 || minutes > 59 || (amPm != "AM" && amPM != "PM") || dotw < 0 || dotw > 6) {
+    if (hours < 0 || hours > 12 || minutes < 0 || minutes > 59 || (amPm != "AM" && amPm != "PM") || dotw < 0 || dotw > 6) {
         res.send('<script>document.location.href="../modify?error"</script>');
         return false;
     }
