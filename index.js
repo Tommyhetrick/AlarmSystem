@@ -81,27 +81,27 @@ var alarmData = [
     },
     // monday
     {
-        hours: 9,
+        hours: 7,
         minutes: 0
     },
     // tuesday
     {
-        hours: 9,
-        minutes: 0
+        hours: 8,
+        minutes: 50
     },
     // wednesday
     {
-        hours: 9,
+        hours: 11,
         minutes: 0
     },
     // thursday
     {
-        hours: 9,
-        minutes: 0
+        hours: 8,
+        minutes: 50
     },
     // friday
     {
-        hours: 9,
+        hours: 11,
         minutes: 0
     },
     // saturday
@@ -701,7 +701,7 @@ app.get('/modify', function (req, res) {
             }
 
             #dotw {
-                width: 15%;
+                width: 22%;
                 height: 8%;
                 font-size: 35pt;
                 font-weight: bold;
