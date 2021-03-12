@@ -1,13 +1,14 @@
 // Alarm System Script By Tom Hetrick Jr.
 // https://github.com/Tommyhetrick/AlarmSystem
+
+// imports
 const fs = require('fs');
 const express = require('express');
 const { exec } = require('child_process');
-const { SSL_OP_TLS_BLOCK_PADDING_BUG } = require('constants');
 const inkjet = require('inkjet');
-const { stderr, stdout } = require('process');
-const { format } = require('path');
 require('dotenv').config();
+
+// config
 const app = express();
 const rootDir = "/home/pi/alarm";
 const usesDongle = true;
