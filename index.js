@@ -1456,7 +1456,10 @@ app.get('/api', function (req, res) {
     apiResp.accessLevel = accessLevel;
     apiResp.nextUnix = getNextAlarm().nAlarmUnix;
     apiResp.currentUnix = Date.now();
-    res.end(JSON.stringify(apiResp));
+
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.json(apiResp);
 });
 
 // ** -- MAIN LOOP -- **
