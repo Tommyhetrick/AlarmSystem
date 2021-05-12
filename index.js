@@ -1056,7 +1056,7 @@ app.get("/storage/archive", function (req, res) {
     }
     if (req.query.m) {
       filterDescription += `Month: ${
-        monthNames[Number(req.query.m) - 1]
+        months[Number(req.query.m) - 1]
       }<br><br>`;
     }
     if (req.query.d) {
@@ -1084,16 +1084,16 @@ app.get("/storage/archive", function (req, res) {
         if (possibleMonths.indexOf(formatDNum(i + 1)) > -1) {
           filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}m=${formatDNum(
             i + 1
-          )}'>${monthNames[i]}  </a>`;
+          )}'>${months[i]}  </a>`;
         } else {
-          filterString += `<a id='filterNone'>${monthNames[i]}  </a>`;
+          filterString += `<a id='filterNone'>${months[i]}  </a>`;
         }
       }
     } else {
       // show only selected month filter
       possibleMonths.forEach((month) => {
         filterString += `<a id='filter' href='./${currentAnchor}${anchorSymbol}m=${month}'>${
-          monthNames[Number(month) - 1]
+          months[Number(month) - 1]
         }  </a>`;
       });
     }
